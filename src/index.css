@@ -1,0 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;700&family=Playfair+Display:wght@600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-brand-500: #4189dd;
+  --color-brand-600: #316fb8;
+  --color-brand-700: #255b99;
+  --font-sans: "DM Sans", sans-serif;
+  --font-display: "Playfair Display", serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply m-0 bg-stone-50 font-sans text-slate-900 antialiased;
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+
+  * {
+    @apply box-border;
+  }
+}

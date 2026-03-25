@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KAYD — Somali Tech Nation</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --blue:#4189DD;
+  --blue-dark:#1a5db5;
+  --blue-deeper:#0f3d82;
+  --blue-light:#e8f2fc;
+  --blue-mid:#d0e5f8;
+  --blue-muted:#6aaae8;
+  --white:#ffffff;
+  --off:#f8f9fc;
+  --text:#0d1117;
+  --text-mid:#3a4560;
+  --text-soft:#7a8aaa;
+  --border:#dde5f2;
+  --radius:12px;
+  --radius-lg:20px;
+  --radius-xl:32px;
+}
+
+html{scroll-behavior:smooth}
+body{font-family:'Syne',sans-serif;background:var(--white);color:var(--text);overflow-x:hidden}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 5%;display:flex;align-items:center;justify-content:space-between;height:68px;background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);transition:all .3s}
+.nav-logo{font-family:'Playfair Display',serif;font-size:24px;font-weight:900;color:var(--blue);letter-spacing:2px;text-decoration:none}
+.nav-logo span{color:var(--blue-deeper)}
+.nav-links{display:flex;gap:32px;list-style:none}
+.nav-links a{text-decoration:none;font-size:13px;font-weight:600;color:var(--text-mid);letter-spacing:.5px;transition:color .2s}
+.nav-links a:hover{color:var(--blue)}
+.nav-cta{background:var(--blue);color:#fff;padding:10px 22px;border-radius:100px;font-size:13px;font-weight:600;border:none;cursor:pointer;letter-spacing:.3px;transition:all .2s}
+.nav-cta:hover{background:var(--blue-dark);transform:translateY(-1px)}
+.nav-hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px}
+.nav-hamburger span{width:22px;height:2px;background:var(--text);border-radius:2px;transition:all .3s}
+.mobile-menu{display:none;position:fixed;top:68px;left:0;right:0;background:var(--white);border-bottom:1px solid var(--border);padding:20px 5%;z-index:99;flex-direction:column;gap:16px}
+.mobile-menu.open{display:flex}
+.mobile-menu a{font-size:15px;font-weight:600;color:var(--text-mid);text-decoration:none;padding:8px 0;border-bottom:1px solid var(--border)}
+
+/* ── HERO ── */
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:100px 5% 60px;position:relative;overflow:hidden;background:var(--white)}
+.hero-bg{position:absolute;inset:0;overflow:hidden;z-index:0}
+.hero-circle{position:absolute;border-radius:50%;opacity:.07}
+.hero-circle-1{width:700px;height:700px;background:var(--blue);top:-200px;right:-150px}
+.hero-circle-2{width:400px;height:400px;background:var(--blue-dark);bottom:-100px;left:-100px}
+.hero-dots{position:absolute;top:0;left:0;right:0;bottom:0;background-image:radial-gradient(var(--blue-mid) 1px,transparent 1px);background-size:32px 32px;opacity:.4}
+.hero-inner{position:relative;z-index:1;max-width:820px}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:var(--blue-light);border:1px solid var(--blue-mid);color:var(--blue-dark);padding:7px 16px;border-radius:100px;font-size:12px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;margin-bottom:28px;animation:fadeUp .6s ease both}
+.hero-badge-dot{width:7px;height:7px;border-radius:50%;background:var(--blue);animation:pulse 2s ease infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+h1.hero-title{font-family:'Playfair Display',serif;font-size:clamp(48px,8vw,88px);font-weight:900;line-height:1.0;color:var(--text);animation:fadeUp .6s .1s ease both}
+h1.hero-title .blue{color:var(--blue)}
+h1.hero-title .outline{-webkit-text-stroke:2px var(--blue);color:transparent}
+.hero-sub{font-size:clamp(16px,2vw,19px);color:var(--text-mid);line-height:1.7;max-width:560px;margin:24px 0 40px;font-weight:400;animation:fadeUp .6s .2s ease both}
+.hero-actions{display:flex;gap:14px;flex-wrap:wrap;animation:fadeUp .6s .3s ease both}
+.btn-primary{background:var(--blue);color:#fff;padding:14px 32px;border-radius:100px;font-size:14px;font-weight:700;border:none;cursor:pointer;letter-spacing:.3px;transition:all .2s;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+.btn-primary:hover{background:var(--blue-dark);transform:translateY(-2px);box-shadow:0 8px 24px rgba(65,137,221,.3)}
+.btn-secondary{background:transparent;color:var(--blue);padding:14px 32px;border-radius:100px;font-size:14px;font-weight:700;border:2px solid var(--blue-mid);cursor:pointer;letter-spacing:.3px;transition:all .2s;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+.btn-secondary:hover{border-color:var(--blue);background:var(--blue-light)}
+.hero-stats{display:flex;gap:40px;margin-top:64px;padding-top:40px;border-top:1px solid var(--border);animation:fadeUp .6s .4s ease both;flex-wrap:wrap}
+.hero-stat .val{font-family:'Playfair Display',serif;font-size:36px;font-weight:900;color:var(--blue);line-height:1}
+.hero-stat .label{font-size:12px;color:var(--text-soft);font-weight:500;margin-top:4px;letter-spacing:.3px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── SECTION BASE ── */
+section{padding:96px 5%}
+.section-label{font-size:11px;font-weight:700;color:var(--blue);letter-spacing:2px;text-transform:uppercase;margin-bottom:14px}
+.section-title{font-family:'Playfair Display',serif;font-size:clamp(32px,5vw,52px);font-weight:900;color:var(--text);line-height:1.1;margin-bottom:16px}
+.section-sub{font-size:16px;color:var(--text-mid);line-height:1.7;max-width:560px}
+.section-head{margin-bottom:56px}
+
+/* ── LAYERS ── */
+.layers-section{background:var(--off)}
+.layers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
+.layer-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;transition:all .3s;cursor:pointer;position:relative;overflow:hidden}
+.layer-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--blue);transform:scaleX(0);transform-origin:left;transition:transform .3s}
+.layer-card:hover{transform:translateY(-4px);box-shadow:0 20px 48px rgba(65,137,221,.12);border-color:var(--blue-mid)}
+.layer-card:hover::before{transform:scaleX(1)}
+.layer-num{font-size:11px;font-weight:700;color:var(--blue-muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px}
+.layer-icon{width:44px;height:44px;background:var(--blue-light);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:20px}
+.layer-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px}
+.layer-desc{font-size:13px;color:var(--text-mid);line-height:1.6}
+.layer-badge{display:inline-block;margin-top:16px;padding:4px 12px;border-radius:100px;font-size:11px;font-weight:600}
+.badge-building{background:var(--blue-light);color:var(--blue-dark)}
+.badge-roadmap{background:#f0f0ee;color:#888}
+
+/* ── JOURNEY ── */
+.journey-section{background:var(--blue-deeper);color:#fff}
+.journey-section .section-label{color:var(--blue-muted)}
+.journey-section .section-title{color:#fff}
+.journey-section .section-sub{color:rgba(255,255,255,.65)}
+.journey-flow{display:flex;flex-direction:column;gap:0;position:relative;max-width:680px;margin:0 auto}
+.journey-flow::before{content:'';position:absolute;left:20px;top:0;bottom:0;width:2px;background:rgba(255,255,255,.12)}
+.journey-step{display:flex;gap:20px;align-items:flex-start;padding:20px 0;position:relative}
+.j-dot{width:42px;height:42px;border-radius:50%;background:var(--blue);border:3px solid var(--blue-deeper);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;z-index:1;transition:all .3s}
+.journey-step:hover .j-dot{background:#fff;color:var(--blue-deeper);transform:scale(1.1)}
+.j-content{}
+.j-title{font-weight:700;font-size:15px;color:#fff;margin-bottom:3px}
+.j-desc{font-size:13px;color:rgba(255,255,255,.55)}
+
+/* ── KNOWLEDGE DEMO ── */
+.demo-section{}
+.demo-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:start}
+.demo-phone{background:var(--text);border-radius:var(--radius-xl);padding:28px 20px;position:relative}
+.demo-phone-header{display:flex;align-items:center;gap:10px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.1)}
+.demo-phone-title{font-size:13px;font-weight:600;color:#fff}
+.demo-phone-back{font-size:11px;color:rgba(255,255,255,.4)}
+.q-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:16px;margin-bottom:12px}
+.q-lang{display:inline-block;padding:3px 10px;border-radius:100px;font-size:10px;font-weight:600;margin-bottom:8px}
+.q-lang.so{background:rgba(65,137,221,.3);color:#6aaae8}
+.q-lang.en{background:rgba(255,255,255,.1);color:rgba(255,255,255,.5)}
+.q-text{font-size:13px;color:rgba(255,255,255,.85);line-height:1.5;margin-bottom:10px}
+.q-meta{display:flex;align-items:center;gap:10px}
+.q-avatar{width:22px;height:22px;border-radius:50%;background:var(--blue);font-size:9px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center}
+.q-name{font-size:11px;color:rgba(255,255,255,.4)}
+.q-votes{margin-left:auto;font-size:11px;color:rgba(255,255,255,.3)}
+.ai-card{background:rgba(65,137,221,.15);border:1px solid rgba(65,137,221,.3);border-radius:14px;padding:16px;margin-top:8px}
+.ai-label{font-size:10px;font-weight:700;color:var(--blue-muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.ai-label::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--blue-muted)}
+.ai-text{font-size:12px;color:rgba(255,255,255,.7);line-height:1.6}
+.demo-info{display:flex;flex-direction:column;gap:20px}
+.demo-feature{display:flex;gap:16px;align-items:flex-start}
+.df-icon{width:44px;height:44px;background:var(--blue-light);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.df-title{font-weight:700;font-size:15px;color:var(--text);margin-bottom:4px}
+.df-desc{font-size:13px;color:var(--text-mid);line-height:1.6}
+
+/* ── MENTORS ── */
+.mentors-section{background:var(--off)}
+.mentors-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px}
+.mentor-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;transition:all .3s}
+.mentor-card:hover{transform:translateY(-3px);box-shadow:0 16px 40px rgba(65,137,221,.1);border-color:var(--blue-mid)}
+.mentor-avatar{width:56px;height:56px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:#fff;margin-bottom:14px}
+.mentor-name{font-weight:700;font-size:15px;color:var(--text);margin-bottom:2px}
+.mentor-role{font-size:12px;color:var(--text-soft);margin-bottom:12px}
+.mentor-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.mentor-tag{padding:3px 10px;background:var(--blue-light);color:var(--blue-dark);border-radius:100px;font-size:11px;font-weight:500}
+.mentor-loc{font-size:11px;color:var(--text-soft);display:flex;align-items:center;gap:4px}
+.mentor-loc::before{content:'📍';font-size:11px}
+.mentor-btn{width:100%;margin-top:14px;padding:9px;background:transparent;border:1px solid var(--blue-mid);border-radius:100px;font-size:12px;font-weight:600;color:var(--blue);cursor:pointer;transition:all .2s;font-family:'Syne',sans-serif}
+.mentor-btn:hover{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+/* ── JOBS ── */
+.job-list{display:flex;flex-direction:column;gap:14px}
+.job-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px 26px;display:flex;align-items:center;gap:20px;transition:all .3s;cursor:pointer}
+.job-card:hover{border-color:var(--blue);box-shadow:0 8px 28px rgba(65,137,221,.1);transform:translateX(4px)}
+.job-co-logo{width:48px;height:48px;border-radius:12px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:var(--blue-dark);flex-shrink:0;font-family:'Playfair Display',serif}
+.job-info{flex:1}
+.job-title{font-weight:700;font-size:15px;color:var(--text);margin-bottom:4px}
+.job-meta{display:flex;gap:14px;flex-wrap:wrap}
+.job-meta span{font-size:12px;color:var(--text-soft)}
+.job-tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.job-tag{padding:3px 10px;border-radius:100px;font-size:11px;font-weight:500}
+.tag-fulltime{background:#e8f5ee;color:#1a6b4a}
+.tag-intern{background:var(--blue-light);color:var(--blue-dark)}
+.tag-remote{background:#f5f0ff;color:#6b3fa0}
+.tag-somali{background:#fff3e0;color:#b35c00}
+.job-arrow{font-size:18px;color:var(--text-soft);transition:all .2s}
+.job-card:hover .job-arrow{color:var(--blue);transform:translateX(4px)}
+
+/* ── MAP TEASER ── */
+.map-section{background:var(--blue-deeper);padding:80px 5%;position:relative;overflow:hidden}
+.map-section::before{content:'';position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.06) 1px,transparent 1px);background-size:28px 28px}
+.map-inner{position:relative;z-index:1;display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
+.map-text .section-label{color:var(--blue-muted)}
+.map-text .section-title{color:#fff}
+.map-text .section-sub{color:rgba(255,255,255,.6);margin-bottom:32px}
+.map-visual{position:relative;height:300px;border-radius:var(--radius-lg);overflow:hidden;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}
+.map-dots{position:absolute;inset:0}
+.map-dot{position:absolute;width:10px;height:10px;border-radius:50%;background:var(--blue);animation:mapPulse 3s ease infinite}
+.map-dot::after{content:'';position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--blue);animation:mapRing 3s ease infinite;opacity:0}
+@keyframes mapPulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes mapRing{0%{transform:scale(.5);opacity:.8}100%{transform:scale(2);opacity:0}}
+.city-label{position:absolute;font-size:10px;font-weight:600;color:rgba(255,255,255,.6);white-space:nowrap;margin-top:14px}
+.map-stat-row{display:flex;gap:32px;margin-top:32px}
+.map-stat .val{font-family:'Playfair Display',serif;font-size:32px;font-weight:900;color:#fff}
+.map-stat .lbl{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px}
+
+/* ── STORIES ── */
+.stories-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px}
+.story-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;transition:all .3s;cursor:pointer}
+.story-card:hover{transform:translateY(-4px);box-shadow:0 20px 48px rgba(65,137,221,.1);border-color:var(--blue-mid)}
+.story-img{height:160px;background:var(--blue);position:relative;overflow:hidden;display:flex;align-items:flex-end;padding:16px}
+.story-img-bg{position:absolute;inset:0;opacity:.2;font-size:120px;display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Playfair Display',serif;font-weight:900;letter-spacing:-4px}
+.story-cat{position:relative;z-index:1;padding:4px 12px;background:rgba(255,255,255,.15);backdrop-filter:blur(8px);border-radius:100px;font-size:10px;font-weight:700;color:#fff;letter-spacing:.8px;text-transform:uppercase}
+.story-body{padding:20px}
+.story-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--text);line-height:1.3;margin-bottom:8px}
+.story-excerpt{font-size:12px;color:var(--text-mid);line-height:1.6;margin-bottom:16px}
+.story-author{display:flex;align-items:center;gap:8px}
+.story-av{width:26px;height:26px;border-radius:50%;background:var(--blue-light);font-size:10px;font-weight:700;color:var(--blue-dark);display:flex;align-items:center;justify-content:center}
+.story-name{font-size:12px;font-weight:600;color:var(--text-mid)}
+.story-date{font-size:11px;color:var(--text-soft);margin-left:auto}
+
+/* ── CTA ── */
+.cta-section{background:var(--blue);padding:100px 5%;text-align:center;position:relative;overflow:hidden}
+.cta-section::before{content:'KAYD';position:absolute;font-family:'Playfair Display',serif;font-size:260px;font-weight:900;color:rgba(255,255,255,.06);top:50%;left:50%;transform:translate(-50%,-50%);white-space:nowrap;pointer-events:none}
+.cta-section .section-label{color:rgba(255,255,255,.6);text-align:center}
+.cta-title{font-family:'Playfair Display',serif;font-size:clamp(36px,6vw,64px);font-weight:900;color:#fff;margin-bottom:16px;position:relative}
+.cta-sub{font-size:16px;color:rgba(255,255,255,.7);max-width:520px;margin:0 auto 40px;position:relative}
+.cta-actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;position:relative}
+.btn-white{background:#fff;color:var(--blue-dark);padding:14px 36px;border-radius:100px;font-size:14px;font-weight:700;border:none;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+.btn-white:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,.15)}
+.btn-outline-white{background:transparent;color:#fff;padding:14px 36px;border-radius:100px;font-size:14px;font-weight:700;border:2px solid rgba(255,255,255,.4);cursor:pointer;transition:all .2s;text-decoration:none;display:inline-flex;align-items:center}
+.btn-outline-white:hover{border-color:#fff;background:rgba(255,255,255,.1)}
+
+/* ── FOOTER ── */
+footer{background:var(--text);color:rgba(255,255,255,.6);padding:60px 5% 32px}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;margin-bottom:48px}
+.footer-brand .logo{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#fff;letter-spacing:2px;margin-bottom:12px}
+.footer-brand p{font-size:13px;line-height:1.7}
+.footer-col h4{font-size:12px;font-weight:700;color:#fff;letter-spacing:1px;text-transform:uppercase;margin-bottom:16px}
+.footer-col a{display:block;font-size:13px;color:rgba(255,255,255,.5);text-decoration:none;margin-bottom:8px;transition:color .2s}
+.footer-col a:hover{color:#fff}
+.footer-bottom{border-top:1px solid rgba(255,255,255,.08);padding-top:28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:gap}
+.footer-bottom p{font-size:12px}
+.footer-star{color:var(--blue-muted);font-size:18px}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .demo-grid{grid-template-columns:1fr}
+  .map-inner{grid-template-columns:1fr}
+  .footer-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:680px){
+  .nav-links,.nav-cta{display:none}
+  .nav-hamburger{display:flex}
+  .hero{padding:90px 5% 60px}
+  h1.hero-title{font-size:clamp(38px,10vw,64px)}
+  .hero-stats{gap:24px}
+  .hero-stat .val{font-size:28px}
+  section{padding:64px 5%}
+  .footer-grid{grid-template-columns:1fr}
+  .footer-bottom{flex-direction:column;gap:12px;text-align:center}
+  .map-inner{grid-template-columns:1fr}
+  .map-visual{height:200px}
+}
+
+/* ── SCROLL ANIMATIONS ── */
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .6s ease,transform .6s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-delay-1{transition-delay:.1s}
+.reveal-delay-2{transition-delay:.2s}
+.reveal-delay-3{transition-delay:.3s}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#">KAYD<span>.</span></a>
+  <ul class="nav-links">
+    <li><a href="#layers">Platform</a></li>
+    <li><a href="#connect">Mentorship</a></li>
+    <li><a href="#work">Jobs</a></li>
+    <li><a href="#stories">Stories</a></li>
+    <li><a href="#map">Community</a></li>
+  </ul>
+  <button class="nav-cta">Join KAYD</button>
+  <div class="nav-hamburger" onclick="toggleMenu()">
+    <span></span><span></span><span></span>
+  </div>
+</nav>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#layers" onclick="toggleMenu()">Platform</a>
+  <a href="#connect" onclick="toggleMenu()">Mentorship</a>
+  <a href="#work" onclick="toggleMenu()">Jobs</a>
+  <a href="#stories" onclick="toggleMenu()">Stories</a>
+  <a href="#map" onclick="toggleMenu()">Community</a>
+  <button class="nav-cta" style="width:fit-content">Join KAYD</button>
+</div>
+
+<!-- HERO -->
+<section class="hero" id="home">
+  <div class="hero-bg">
+    <div class="hero-circle hero-circle-1"></div>
+    <div class="hero-circle hero-circle-2"></div>
+    <div class="hero-dots"></div>
+  </div>
+  <div class="hero-inner">
+    <div class="hero-badge">
+      <div class="hero-badge-dot"></div>
+      Now Building — Join the First Wave
+    </div>
+    <h1 class="hero-title">
+      The Home<br>
+      of <span class="blue">Somali</span><br>
+      <span class="outline">Tech.</span>
+    </h1>
+    <p class="hero-sub">25 million Somali speakers. Zero technical infrastructure built for them. Until now. KAYD is the first platform connecting every Somali person in tech — from Mogadishu to Minneapolis.</p>
+    <div class="hero-actions">
+      <a href="#layers" class="btn-primary">Explore the Platform →</a>
+      <a href="#connect" class="btn-secondary">Find a Mentor</a>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="val">25M+</div><div class="label">Somali speakers</div></div>
+      <div class="hero-stat"><div class="val">8</div><div class="label">Platform layers</div></div>
+      <div class="hero-stat"><div class="val">4+</div><div class="label">Diaspora cities</div></div>
+      <div class="hero-stat"><div class="val">0</div><div class="label">Existing alternatives</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- LAYERS -->
+<section class="layers-section reveal" id="layers">
+  <div class="section-head">
+    <div class="section-label">The Platform</div>
+    <h2 class="section-title">Eight layers.<br>One complete journey.</h2>
+    <p class="section-sub">From learning your first line of code in Somali, to getting hired at a top company — KAYD is built for every stage.</p>
+  </div>
+  <div class="layers-grid">
+    <div class="layer-card reveal">
+      <div class="layer-num">Layer 0</div>
+      <div class="layer-icon">📚</div>
+      <div class="layer-title">Learn</div>
+      <div class="layer-desc">Learn to code in Somali from absolute zero. Structured beginner curriculum in both Somali and English.</div>
+      <span class="layer-badge badge-roadmap">Coming soon</span>
+    </div>
+    <div class="layer-card reveal reveal-delay-1">
+      <div class="layer-num">Layer 1</div>
+      <div class="layer-icon">💡</div>
+      <div class="layer-title">Knowledge</div>
+      <div class="layer-desc">Stack Overflow meets Wikipedia — built entirely in Somali and English. AI that explains CS concepts in Somali for the first time.</div>
+      <span class="layer-badge badge-building">Building now</span>
+    </div>
+    <div class="layer-card reveal reveal-delay-2">
+      <div class="layer-num">Layer 2</div>
+      <div class="layer-icon">🤝</div>
+      <div class="layer-title">Connect</div>
+      <div class="layer-desc">Structured mentorship matching. 8-week cohorts with Somali professionals worldwide. Not random DMs — real accountability.</div>
+      <span class="layer-badge badge-building">Building now</span>
+    </div>
+    <div class="layer-card reveal">
+      <div class="layer-num">Layer 3</div>
+      <div class="layer-icon">💼</div>
+      <div class="layer-title">Work</div>
+      <div class="layer-desc">Jobs, internships, freelance, and hackathons filtered specifically for Somali developers. Companies come here to find Somali talent.</div>
+      <span class="layer-badge badge-building">Building now</span>
+    </div>
+    <div class="layer-card reveal reveal-delay-1">
+      <div class="layer-num">Layer 4</div>
+      <div class="layer-icon">🔨</div>
+      <div class="layer-title">Build</div>
+      <div class="layer-desc">Project collaboration hub where Somali developers find teammates and build solutions for Somalia and East Africa.</div>
+      <span class="layer-badge badge-roadmap">Coming soon</span>
+    </div>
+    <div class="layer-card reveal reveal-delay-2">
+      <div class="layer-num">Layer 5</div>
+      <div class="layer-icon">✨</div>
+      <div class="layer-title">Stories</div>
+      <div class="layer-desc">Profiles, achievements, and long-form stories celebrating Somali excellence in tech. You don't have to choose between being Somali and being a technologist.</div>
+      <span class="layer-badge badge-building">Building now</span>
+    </div>
+    <div class="layer-card reveal">
+      <div class="layer-num">Layer 6</div>
+      <div class="layer-icon">🗓️</div>
+      <div class="layer-title">Events</div>
+      <div class="layer-desc">Virtual hackathons, webinars, community calls, and local meetups in diaspora cities — Minneapolis, London, Toronto, Nairobi.</div>
+      <span class="layer-badge badge-roadmap">Coming soon</span>
+    </div>
+    <div class="layer-card reveal reveal-delay-1">
+      <div class="layer-num">Layer 7</div>
+      <div class="layer-icon">🌍</div>
+      <div class="layer-title">Local</div>
+      <div class="layer-desc">Specifically for devs in Somalia and Somaliland — local startups, investors, government tech initiatives, on-the-ground community building.</div>
+      <span class="layer-badge badge-roadmap">Coming soon</span>
+    </div>
+  </div>
+</section>
+
+<!-- KNOWLEDGE DEMO -->
+<section class="reveal" id="knowledge">
+  <div class="section-head">
+    <div class="section-label">Layer 1 — Knowledge</div>
+    <h2 class="section-title">CS explained<br>in Somali. First time, ever.</h2>
+    <p class="section-sub">Ask questions and get answers in Somali or English. An AI that understands both — and explains recursion, APIs, and data structures in af Soomaali.</p>
+  </div>
+  <div class="demo-grid">
+    <div class="demo-phone">
+      <div class="demo-phone-header">
+        <div>
+          <div class="demo-phone-back">← Knowledge</div>
+          <div class="demo-phone-title">Maxaa loo isticmaalaa recursion?</div>
+        </div>
+      </div>
+      <div class="q-card">
+        <span class="q-lang so">Soomaali</span>
+        <div class="q-text">Maxay tahay farsamada recursion-ka oo la isticmaalo marka la baranayo programming-ka? Tusaale ii sii.</div>
+        <div class="q-meta">
+          <div class="q-avatar">FA</div>
+          <div class="q-name">Faadumo A. · Mogadishu</div>
+          <div class="q-votes">↑ 14</div>
+        </div>
+      </div>
+      <div class="ai-card">
+        <div class="ai-label">KAYD AI · Af Soomaali</div>
+        <div class="ai-text">Recursion waa habka ay function-ku isu wacdo. Tusaale ahaan, haddaad xisaabinayso factorial-ka 5, waxaad ku qori kartaa: <br><br>factorial(5) = 5 × factorial(4) = 5 × 4 × factorial(3)...<br><br>Waxay sii socdaa ilaa ay gaarto base case-ka (0 ama 1).</div>
+      </div>
+      <div class="q-card" style="margin-top:12px">
+        <span class="q-lang en">English</span>
+        <div class="q-text">How do I pick between React and Next.js for my first project?</div>
+        <div class="q-meta">
+          <div class="q-avatar" style="background:var(--blue-muted)">MH</div>
+          <div class="q-name">Mohamed H. · Minneapolis</div>
+          <div class="q-votes">↑ 9</div>
+        </div>
+      </div>
+    </div>
+    <div class="demo-info">
+      <div class="demo-feature">
+        <div class="df-icon">🌐</div>
+        <div>
+          <div class="df-title">Fully bilingual — Somali + English</div>
+          <div class="df-desc">Every question, answer, and AI response works in both languages. Filter by language or browse both at once.</div>
+        </div>
+      </div>
+      <div class="demo-feature">
+        <div class="df-icon">🤖</div>
+        <div>
+          <div class="df-title">AI that speaks Somali</div>
+          <div class="df-desc">Click "Explain in Somali" on any concept — the AI breaks it down in af Soomaali, using terms a beginner actually understands.</div>
+        </div>
+      </div>
+      <div class="demo-feature">
+        <div class="df-icon">📖</div>
+        <div>
+          <div class="df-title">Building a language corpus</div>
+          <div class="df-desc">Every contribution creates the first ever corpus of Somali technical language — historically significant beyond just a Q&A platform.</div>
+        </div>
+      </div>
+      <div class="demo-feature">
+        <div class="df-icon">⬆️</div>
+        <div>
+          <div class="df-title">Community-verified answers</div>
+          <div class="df-desc">Upvote the best answers. Accepted answers rise to the top. The community quality-controls itself.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- JOURNEY -->
+<section class="journey-section reveal" id="journey">
+  <div style="max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center">
+    <div>
+      <div class="section-label">The Flywheel</div>
+      <h2 class="section-title">One platform.<br>The full journey.</h2>
+      <p class="section-sub" style="margin-bottom:0">Every person who succeeds feeds the next person. The platform gets stronger with every hire, every mentor, every contribution.</p>
+    </div>
+    <div class="journey-flow">
+      <div class="journey-step"><div class="j-dot">1</div><div class="j-content"><div class="j-title">Discovers KAYD</div><div class="j-desc">Finds the platform through community or search</div></div></div>
+      <div class="journey-step"><div class="j-dot">2</div><div class="j-content"><div class="j-title">Learns in Somali</div><div class="j-desc">Starts with Layer 0 or dives into Knowledge Q&A</div></div></div>
+      <div class="journey-step"><div class="j-dot">3</div><div class="j-content"><div class="j-title">Gets matched with a mentor</div><div class="j-desc">8-week cohort with a Somali professional worldwide</div></div></div>
+      <div class="journey-step"><div class="j-dot">4</div><div class="j-content"><div class="j-title">Builds a verified portfolio</div><div class="j-desc">Real micro-tasks, real projects, real credentials</div></div></div>
+      <div class="journey-step"><div class="j-dot">5</div><div class="j-content"><div class="j-title">Gets hired</div><div class="j-desc">Warm referrals + KAYD Work job board</div></div></div>
+      <div class="journey-step"><div class="j-dot">6</div><div class="j-content"><div class="j-title">Comes back as a mentor</div><div class="j-desc">The cycle repeats and compounds forever</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- MENTORS -->
+<section class="mentors-section reveal" id="connect">
+  <div class="section-head">
+    <div class="section-label">Layer 2 — Connect</div>
+    <h2 class="section-title">Your mentor is<br>already out there.</h2>
+    <p class="section-sub">Structured 8-week cohorts matching Somali students with Somali professionals worldwide. Accountability built in. Pay-it-forward model baked in.</p>
+  </div>
+  <div class="mentors-grid">
+    <div class="mentor-card reveal">
+      <div class="mentor-avatar">AA</div>
+      <div class="mentor-name">Abdi Axmed</div>
+      <div class="mentor-role">Senior SWE · Google</div>
+      <div class="mentor-tags"><span class="mentor-tag">Algorithms</span><span class="mentor-tag">System Design</span></div>
+      <div class="mentor-loc">San Francisco, CA</div>
+      <button class="mentor-btn">Request Mentorship</button>
+    </div>
+    <div class="mentor-card reveal reveal-delay-1">
+      <div class="mentor-avatar" style="background:#1a5db5">HM</div>
+      <div class="mentor-name">Hodan Muuse</div>
+      <div class="mentor-role">Product Manager · Meta</div>
+      <div class="mentor-tags"><span class="mentor-tag">Product</span><span class="mentor-tag">Career Growth</span></div>
+      <div class="mentor-loc">London, UK</div>
+      <button class="mentor-btn">Request Mentorship</button>
+    </div>
+    <div class="mentor-card reveal reveal-delay-2">
+      <div class="mentor-avatar" style="background:#0f3d82">YI</div>
+      <div class="mentor-name">Yusuf Ibraahim</div>
+      <div class="mentor-role">Full-Stack Engineer · Shopify</div>
+      <div class="mentor-tags"><span class="mentor-tag">React</span><span class="mentor-tag">Node.js</span></div>
+      <div class="mentor-loc">Toronto, Canada</div>
+      <button class="mentor-btn">Request Mentorship</button>
+    </div>
+    <div class="mentor-card reveal reveal-delay-3">
+      <div class="mentor-avatar" style="background:#6aaae8">FN</div>
+      <div class="mentor-name">Faadumo Nuur</div>
+      <div class="mentor-role">ML Engineer · Anthropic</div>
+      <div class="mentor-tags"><span class="mentor-tag">AI/ML</span><span class="mentor-tag">Python</span></div>
+      <div class="mentor-loc">Seattle, WA</div>
+      <button class="mentor-btn">Request Mentorship</button>
+    </div>
+  </div>
+</section>
+
+<!-- JOBS -->
+<section class="reveal" id="work">
+  <div class="section-head">
+    <div class="section-label">Layer 3 — Work</div>
+    <h2 class="section-title">Opportunities built<br>for Somali talent.</h2>
+    <p class="section-sub">Jobs, internships, and freelance projects — curated and filtered for Somali developers. Companies who want diverse Somali talent come here.</p>
+  </div>
+  <div class="job-list">
+    <div class="job-card reveal">
+      <div class="job-co-logo">AM</div>
+      <div class="job-info">
+        <div class="job-title">Software Engineer — New Grad</div>
+        <div class="job-meta"><span>Amazon</span><span>·</span><span>Seattle, WA</span><span>·</span><span>$140k–$165k</span></div>
+        <div class="job-tags"><span class="job-tag tag-fulltime">Full-time</span><span class="job-tag tag-somali">Somali-friendly</span></div>
+      </div>
+      <div class="job-arrow">→</div>
+    </div>
+    <div class="job-card reveal reveal-delay-1">
+      <div class="job-co-logo" style="background:#e8f5ee;color:#1a6b4a">ST</div>
+      <div class="job-info">
+        <div class="job-title">Frontend Engineering Intern</div>
+        <div class="job-meta"><span>Stripe</span><span>·</span><span>Remote</span><span>·</span><span>$8k/month</span></div>
+        <div class="job-tags"><span class="job-tag tag-intern">Internship</span><span class="job-tag tag-remote">Remote</span></div>
+      </div>
+      <div class="job-arrow">→</div>
+    </div>
+    <div class="job-card reveal reveal-delay-2">
+      <div class="job-co-logo" style="background:#f5f0ff;color:#6b3fa0">HB</div>
+      <div class="job-info">
+        <div class="job-title">Data Scientist — East Africa Markets</div>
+        <div class="job-meta"><span>Hormuud Telecom</span><span>·</span><span>Mogadishu</span><span>·</span><span>Competitive</span></div>
+        <div class="job-tags"><span class="job-tag tag-fulltime">Full-time</span><span class="job-tag tag-somali">Somalia-based</span></div>
+      </div>
+      <div class="job-arrow">→</div>
+    </div>
+    <div class="job-card reveal">
+      <div class="job-co-logo" style="background:#fff3e0;color:#b35c00">GG</div>
+      <div class="job-info">
+        <div class="job-title">Backend Engineer</div>
+        <div class="job-meta"><span>Golis Tech</span><span>·</span><span>Hargeisa / Remote</span><span>·</span><span>Competitive</span></div>
+        <div class="job-tags"><span class="job-tag tag-fulltime">Full-time</span><span class="job-tag tag-remote">Remote OK</span><span class="job-tag tag-somali">Somali-friendly</span></div>
+      </div>
+      <div class="job-arrow">→</div>
+    </div>
+  </div>
+</section>
+
+<!-- MAP -->
+<section class="map-section reveal" id="map">
+  <div class="map-inner">
+    <div class="map-text">
+      <div class="section-label">The Community</div>
+      <h2 class="section-title">Somali tech talent,<br>mapped worldwide.</h2>
+      <p class="section-sub">From Mogadishu to Minneapolis, London to Nairobi — the global Somali tech community, finally visible in one place.</p>
+      <a href="#" class="btn-white">View the full map →</a>
+      <div class="map-stat-row">
+        <div class="map-stat"><div class="val">15+</div><div class="lbl">Cities worldwide</div></div>
+        <div class="map-stat"><div class="val">500+</div><div class="lbl">Engineers mapped</div></div>
+      </div>
+    </div>
+    <div class="map-visual">
+      <div class="map-dots">
+        <!-- Dots representing cities -->
+        <div class="map-dot" style="left:18%;top:55%;animation-delay:0s"><div class="city-label">Minneapolis</div></div>
+        <div class="map-dot" style="left:12%;top:48%;animation-delay:.4s"></div>
+        <div class="map-dot" style="left:44%;top:32%;animation-delay:.8s"><div class="city-label">London</div></div>
+        <div class="map-dot" style="left:48%;top:28%;animation-delay:.2s"></div>
+        <div class="map-dot" style="left:46%;top:36%;animation-delay:1s"></div>
+        <div class="map-dot" style="left:56%;top:52%;animation-delay:.6s"><div class="city-label">Nairobi</div></div>
+        <div class="map-dot" style="left:60%;top:44%;animation-delay:.3s"><div class="city-label">Mogadishu</div></div>
+        <div class="map-dot" style="left:58%;top:40%;animation-delay:.9s"></div>
+        <div class="map-dot" style="left:57%;top:36%;animation-delay:.5s"><div class="city-label">Hargeisa</div></div>
+        <div class="map-dot" style="left:22%;top:52%;animation-delay:.7s"><div class="city-label">Toronto</div></div>
+        <div class="map-dot" style="left:8%;top:44%;animation-delay:1.1s"></div>
+        <div class="map-dot" style="left:72%;top:38%;animation-delay:.15s"><div class="city-label">Dubai</div></div>
+        <div class="map-dot" style="left:80%;top:55%;animation-delay:.85s"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STORIES -->
+<section class="reveal" id="stories">
+  <div class="section-head">
+    <div class="section-label">Layer 5 — Stories</div>
+    <h2 class="section-title">You don't have to choose<br>between being Somali and<br>being a technologist.</h2>
+  </div>
+  <div class="stories-grid">
+    <div class="story-card reveal">
+      <div class="story-img" style="background:var(--blue-dark)">
+        <div class="story-img-bg">G</div>
+        <span class="story-cat">Career</span>
+      </div>
+      <div class="story-body">
+        <div class="story-title">From Mogadishu to Google: my 5-year journey</div>
+        <div class="story-excerpt">I learned to code on a borrowed laptop in a café with spotty internet. Here's what nobody tells you about making it in tech from Somalia.</div>
+        <div class="story-author">
+          <div class="story-av">AA</div>
+          <div class="story-name">Abdi Axmed</div>
+          <div class="story-date">Mar 2024</div>
+        </div>
+      </div>
+    </div>
+    <div class="story-card reveal reveal-delay-1">
+      <div class="story-img" style="background:#0f3d82">
+        <div class="story-img-bg">I</div>
+        <span class="story-cat">Identity</span>
+      </div>
+      <div class="story-body">
+        <div class="story-title">On being Somali in a room full of engineers</div>
+        <div class="story-excerpt">The subtle moments that make you question whether you belong — and why building this community changes everything.</div>
+        <div class="story-author">
+          <div class="story-av" style="background:#d0e5f8;color:#0f3d82">HM</div>
+          <div class="story-name">Hodan Muuse</div>
+          <div class="story-date">Feb 2024</div>
+        </div>
+      </div>
+    </div>
+    <div class="story-card reveal reveal-delay-2">
+      <div class="story-img" style="background:#1a5db5">
+        <div class="story-img-bg">S</div>
+        <span class="story-cat">Somalia</span>
+      </div>
+      <div class="story-body">
+        <div class="story-title">Building Somalia's first fintech startup from Hargeisa</div>
+        <div class="story-excerpt">No VC funding. No Silicon Valley connections. Just a problem worth solving and a community that needed us to succeed.</div>
+        <div class="story-author">
+          <div class="story-av" style="background:#d0e5f8;color:#1a5db5">YI</div>
+          <div class="story-name">Yusuf Ibraahim</div>
+          <div class="story-date">Jan 2024</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section reveal">
+  <div class="section-label">Join the Movement</div>
+  <h2 class="cta-title">The home base<br>starts here.</h2>
+  <p class="cta-sub">Be part of the first wave. Whether you're a student just starting out or a senior engineer ready to give back — KAYD is yours.</p>
+  <div class="cta-actions">
+    <a href="#" class="btn-white">Join as a Student →</a>
+    <a href="#" class="btn-outline-white">Join as a Mentor</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <div class="logo">KAYD.</div>
+      <p>The first digital infrastructure for the entire Somali tech ecosystem. One platform, one community, one complete journey.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Platform</h4>
+      <a href="#">Knowledge</a>
+      <a href="#">Connect</a>
+      <a href="#">Work</a>
+      <a href="#">Stories</a>
+    </div>
+    <div class="footer-col">
+      <h4>Community</h4>
+      <a href="#">Global Map</a>
+      <a href="#">Events</a>
+      <a href="#">Hackathons</a>
+      <a href="#">KAYD Local</a>
+    </div>
+    <div class="footer-col">
+      <h4>Company</h4>
+      <a href="#">About</a>
+      <a href="#">Blog</a>
+      <a href="#">Contact</a>
+      <a href="#">Careers</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>© 2024 KAYD. Built for the Somali tech community, by the Somali tech community.</p>
+    <div class="footer-star">★</div>
+  </div>
+</footer>
+
+<script>
+function toggleMenu(){
+  document.getElementById('mobileMenu').classList.toggle('open')
+}
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if(e.isIntersecting) e.target.classList.add('visible')
+  })
+}, {threshold:0.1})
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el))
+</script>
+</body>
+</html>
