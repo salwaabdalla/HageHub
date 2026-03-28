@@ -1,9 +1,32 @@
+import { supabase } from './supabase'
+
 export const KEYS = {
   QUESTIONS: 'hagehub_questions',
   VOTES: 'hh_votes',
   THREAD_COMMENTS: 'hh_thread_comments',
   COMMUNITY: 'hh_comments',
   AI_CHAT: 'hh_ai_messages',
+}
+
+export async function uploadQuestionImage(file) {
+  const ext = file.name.split('.').pop()
+  const name = `${Date.now()}-${Math.random()
+    .toString(36).substring(2)}.${ext}`
+
+  const { error } = await supabase.storage
+    .from('question-images')
+    .upload(name, file)
+
+  if (error) {
+    console.error('Upload failed:', error)
+    return null
+  }
+
+  const { data } = supabase.storage
+    .from('question-images')
+    .getPublicUrl(name)
+
+  return data.publicUrl
 }
 
 export function read(key, fallback) {

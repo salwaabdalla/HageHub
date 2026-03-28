@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(find . -not -path */node_modules/* -not -path */.git/* -not -path */dist/* -type f)",
-      "Bash(xargs wc:*)"
-    ]
-  }
-}

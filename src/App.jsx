@@ -19,175 +19,120 @@ import ProfilePage from './pages/ProfilePage'
 import SettingsPage from './pages/SettingsPage'
 import SignupPage from './pages/SignupPage'
 import StoriesPage from './pages/StoriesPage'
+import JobsPage from './pages/JobsPage'
+import { supabase } from './lib/supabase'
 
-const USER_STORAGE_KEY = 'hagehub_user'
-
-function readStoredUser() {
-  if (typeof window === 'undefined') {
-    return null
-  }
-
-  try {
-    const stored = window.localStorage.getItem(USER_STORAGE_KEY)
-    return stored ? JSON.parse(stored) : null
-  } catch {
-    return null
+// Build user object from Supabase auth — uses metadata, no DB query needed
+function userFromSession(supabaseUser) {
+  if (!supabaseUser) return null
+  const meta = supabaseUser.user_metadata ?? {}
+  return {
+    id: supabaseUser.id,
+    email: supabaseUser.email,
+    name: meta.name || supabaseUser.email?.split('@')[0] || 'User',
+    role: meta.role || 'student',
+    country: meta.country || '',
+    metadata: meta,
   }
 }
 
-function ProtectedRoute({ user, children }) {
-  if (!user) {
-    return <Navigate to="/login" replace />
+function ProtectedRoute({ user, loading, children }) {
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ fontSize: 14, color: '#8a9bbf' }}>Loading…</p>
+      </div>
+    )
   }
-
+  if (!user) return <Navigate to="/login" replace />
   return children
 }
 
-function GuestRoute({ user, children }) {
-  if (user) {
-    return <Navigate to="/home" replace />
-  }
-
+function GuestRoute({ user, loading, children }) {
+  if (loading) return null
+  if (user) return <Navigate to="/home" replace />
   return children
 }
 
-function AppRoutes({ user, setUser }) {
+function AppRoutes({ user, setUser, loading }) {
   const { pathname } = useLocation()
   const hideGlobalNavbar = [
-    '/',
-    '/home',
-    '/learn',
-    '/ask',
-    '/ai',
-    '/connect',
-    '/build',
-    '/stories',
-    '/profile',
-    '/settings',
+    '/', '/home', '/learn', '/ask', '/ai',
+    '/connect', '/build', '/stories', '/jobs', '/profile', '/settings',
   ].includes(pathname)
 
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    setUser(null)
+  }
+
+  const pageProps = { user, onLogout: handleLogout }
+
   return (
-    <div
-      className={
-        hideGlobalNavbar ? undefined : 'relative min-h-screen bg-stone-50'
-      }
-    >
-      {!hideGlobalNavbar ? (
+    <div className={hideGlobalNavbar ? undefined : 'relative min-h-screen bg-stone-50'}>
+      {!hideGlobalNavbar && (
         <>
           <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top,_rgba(65,137,221,0.2),_transparent_60%)]" />
           <Navbar user={user} />
         </>
-      ) : null}
+      )}
       <Routes>
         <Route path="/" element={<Landing />} />
-        <Route
-          path="/login"
-          element={
-            <GuestRoute user={user}>
-              <LoginPage onLogin={setUser} />
-            </GuestRoute>
-          }
-        />
-        <Route
-          path="/signup"
-          element={
-            <GuestRoute user={user}>
-              <SignupPage onSignup={setUser} />
-            </GuestRoute>
-          }
-        />
-        <Route
-          path="/home"
-          element={
-              <ProtectedRoute user={user}>
-                <DashboardPage user={user} onLogout={() => setUser(null)} />
-              </ProtectedRoute>
-            }
-          />
-        <Route
-          path="/learn"
-          element={
-            <ProtectedRoute user={user}>
-              <LearnPage user={user} onLogout={() => setUser(null)} />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/ask"
-          element={
-            <ProtectedRoute user={user}>
-              <AskPage user={user} onLogout={() => setUser(null)} />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/ai"
-          element={
-            <ProtectedRoute user={user}>
-              <AIExplainerPage user={user} onLogout={() => setUser(null)} />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/connect"
-          element={
-            <ProtectedRoute user={user}>
-              <ConnectPage user={user} onLogout={() => setUser(null)} />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/build"
-          element={
-            <ProtectedRoute user={user}>
-              <BuildPage user={user} onLogout={() => setUser(null)} />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/stories"
-          element={
-            <ProtectedRoute user={user}>
-              <StoriesPage user={user} onLogout={() => setUser(null)} />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute user={user}>
-              <ProfilePage user={user} onLogout={() => setUser(null)} />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute user={user}>
-              <SettingsPage user={user} onLogout={() => setUser(null)} />
-            </ProtectedRoute>
-          }
-        />
+
+        <Route path="/login"  element={<GuestRoute user={user} loading={loading}><LoginPage  onLogin={setUser}  /></GuestRoute>} />
+        <Route path="/signup" element={<GuestRoute user={user} loading={loading}><SignupPage onSignup={setUser} /></GuestRoute>} />
+
+        <Route path="/home"     element={<ProtectedRoute user={user} loading={loading}><DashboardPage   {...pageProps} /></ProtectedRoute>} />
+        <Route path="/learn"    element={<ProtectedRoute user={user} loading={loading}><LearnPage        {...pageProps} /></ProtectedRoute>} />
+        <Route path="/ask"      element={<ProtectedRoute user={user} loading={loading}><AskPage          {...pageProps} /></ProtectedRoute>} />
+        <Route path="/ai"       element={<ProtectedRoute user={user} loading={loading}><AIExplainerPage  {...pageProps} /></ProtectedRoute>} />
+        <Route path="/connect"  element={<ProtectedRoute user={user} loading={loading}><ConnectPage      {...pageProps} /></ProtectedRoute>} />
+        <Route path="/build"    element={<ProtectedRoute user={user} loading={loading}><BuildPage        {...pageProps} /></ProtectedRoute>} />
+        <Route path="/stories"  element={<ProtectedRoute user={user} loading={loading}><StoriesPage      {...pageProps} /></ProtectedRoute>} />
+        <Route path="/jobs"     element={<ProtectedRoute user={user} loading={loading}><JobsPage         {...pageProps} /></ProtectedRoute>} />
+        <Route path="/profile"  element={<ProtectedRoute user={user} loading={loading}><ProfilePage      {...pageProps} /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute user={user} loading={loading}><SettingsPage     {...pageProps} /></ProtectedRoute>} />
       </Routes>
     </div>
   )
 }
 
 function App() {
-  const [user, setUser] = useState(() => readStoredUser())
+  const [user, setUser]     = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (user) {
-      window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
-      return
-    }
+    let mounted = true
+    localStorage.removeItem('hh_photo')
 
-    window.localStorage.removeItem(USER_STORAGE_KEY)
-  }, [user])
+    // Restore existing session on page load / refresh
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (mounted) {
+          setUser(userFromSession(session?.user ?? null))
+          setLoading(false)
+        }
+      })
+      .catch(() => {
+        // Supabase unreachable — let the user through to login
+        if (mounted) setLoading(false)
+      })
+
+    // Keep user state in sync with Supabase session events
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return
+      setUser(userFromSession(session?.user ?? null))
+    })
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
+  }, [])
 
   return (
     <BrowserRouter>
-      <AppRoutes user={user} setUser={setUser} />
+      <AppRoutes user={user} setUser={setUser} loading={loading} />
     </BrowserRouter>
   )
 }

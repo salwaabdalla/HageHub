@@ -1,7 +1,7 @@
-import HageHubWorkspace from './HageHubWorkspace'
+import Learn from './Learn'
 
 function LearnPage({ user, onLogout }) {
-  return <HageHubWorkspace user={user} onLogout={onLogout} />
+  return <Learn user={user} onLogout={onLogout} />
 }
 
 export default LearnPage

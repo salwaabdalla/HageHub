@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { Lightbox } from '../ui/Lightbox'
+import { uploadQuestionImage } from '../../lib/storage'
 
 function initials(name = '') {
   return name.split(' ').slice(0, 2).map((p) => p[0]).join('').toUpperCase() || '??'
@@ -39,7 +40,8 @@ export function AskModal({ isOpen, onClose, onSubmit, user }) {
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [tags, setTags] = useState('')
-  const [images, setImages] = useState([])
+  const [imageFile, setImageFile] = useState(null)
+  const [selectedImagePreview, setSelectedImagePreview] = useState('')
   const [lightbox, setLightbox] = useState(null)
   const [dragOver, setDragOver] = useState(false)
   const fileRef = useRef(null)
@@ -47,52 +49,57 @@ export function AskModal({ isOpen, onClose, onSubmit, user }) {
   if (!isOpen) return null
 
   function processFiles(files) {
-    const remaining = 4 - images.length
-    if (remaining <= 0) return
-    files.slice(0, remaining).forEach((file) => {
-      if (!file.type.startsWith('image/')) return
-      const reader = new FileReader()
-      reader.onload = (e) => setImages((prev) => [...prev, e.target.result])
-      reader.readAsDataURL(file)
-    })
+    const file = files.find((entry) => entry.type.startsWith('image/'))
+    if (!file) return
+    setImageFile(file)
+    setSelectedImagePreview(URL.createObjectURL(file))
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!title.trim()) return
     const tagList = tags.split(',').map((t) => t.trim().replace(/^#/, '')).filter(Boolean)
-    const profilePic = localStorage.getItem(`hh_pic_${user?.name}`) || ''
+
+    let imageUrl = null
+    if (imageFile) {
+      imageUrl = await uploadQuestionImage(imageFile)
+    }
+
     onSubmit({
       id: String(Date.now()),
       lang,
       title: title.trim(),
       body: body.trim(),
       tags: tagList,
-      images: [...images],
+      images: imageUrl ? [imageUrl] : [],
       votes: 0,
       answers: 0,
       poster: {
         init: initials(user?.name),
         name: user?.name || 'Community member',
         loc: '',
-        photo: profilePic,
       },
       time: 'Just now',
     })
-    setLang('both'); setTitle(''); setBody(''); setTags(''); setImages([])
+
+    setLang('both')
+    setTitle('')
+    setBody('')
+    setTags('')
+    setImageFile(null)
+    setSelectedImagePreview('')
     onClose()
   }
 
   const LANG_OPTS = [
-    { val: 'both', label: 'Both', flags: '🇸🇴🇬🇧' },
-    { val: 'so', label: 'Somali', flags: '🇸🇴' },
-    { val: 'en', label: 'English', flags: '🇬🇧' },
+    { val: 'both', label: 'Both', flags: 'SO + EN' },
+    { val: 'so', label: 'Somali', flags: 'SO' },
+    { val: 'en', label: 'English', flags: 'EN' },
   ]
 
   return (
     <>
       {lightbox && <Lightbox src={lightbox} onClose={() => setLightbox(null)} />}
 
-      {/* Overlay */}
       <div
         onClick={onClose}
         style={{
@@ -102,7 +109,6 @@ export function AskModal({ isOpen, onClose, onSubmit, user }) {
           backdropFilter: 'blur(3px)', overflowY: 'auto',
         }}
       >
-        {/* Modal */}
         <div
           onClick={(e) => e.stopPropagation()}
           style={{
@@ -111,7 +117,6 @@ export function AskModal({ isOpen, onClose, onSubmit, user }) {
             overflow: 'hidden', flexShrink: 0,
           }}
         >
-          {/* Header */}
           <div style={{ padding: '28px 32px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 600, color: '#0c1220', letterSpacing: '-.3px' }}>
               Ask a Question
@@ -126,14 +131,11 @@ export function AskModal({ isOpen, onClose, onSubmit, user }) {
                 color: '#8a9bbf', fontFamily: 'DM Sans, sans-serif', flexShrink: 0,
               }}
             >
-              ✕
+              ×
             </button>
           </div>
 
-          {/* Body */}
           <div style={{ padding: '22px 32px 0', display: 'flex', flexDirection: 'column', gap: 18 }}>
-
-            {/* Language */}
             <div>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: '#8a9bbf', marginBottom: 10 }}>
                 Language
@@ -161,7 +163,6 @@ export function AskModal({ isOpen, onClose, onSubmit, user }) {
               </div>
             </div>
 
-            {/* Title */}
             <FocusInput
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -169,7 +170,6 @@ export function AskModal({ isOpen, onClose, onSubmit, user }) {
               maxLength={180}
             />
 
-            {/* Body */}
             <FocusInput
               as="textarea"
               value={body}
@@ -177,14 +177,12 @@ export function AskModal({ isOpen, onClose, onSubmit, user }) {
               placeholder="More details about your question (optional)"
             />
 
-            {/* Tags */}
             <FocusInput
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               placeholder="Tags: react, api, career (comma separated)"
             />
 
-            {/* Image upload */}
             <div>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: '#8a9bbf', marginBottom: 10 }}>
                 Attach Images
@@ -194,75 +192,75 @@ export function AskModal({ isOpen, onClose, onSubmit, user }) {
                 ref={fileRef}
                 type="file"
                 accept="image/*"
-                multiple
                 style={{ display: 'none' }}
-                onChange={(e) => { processFiles(Array.from(e.target.files)); e.target.value = '' }}
+                onChange={(e) => {
+                  processFiles(Array.from(e.target.files || []))
+                  e.target.value = ''
+                }}
               />
 
-              {images.length < 4 && (
-                <div
-                  onClick={() => fileRef.current?.click()}
-                  onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-                  onDragLeave={() => setDragOver(false)}
-                  onDrop={(e) => {
-                    e.preventDefault()
-                    setDragOver(false)
-                    processFiles(Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith('image/')))
-                  }}
-                  style={{
-                    border: `2px dashed ${dragOver ? '#4189DD' : '#dce6f5'}`,
-                    borderRadius: 12, padding: 20, cursor: 'pointer',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center',
-                    gap: 8, textAlign: 'center',
-                    background: dragOver ? '#eaf2fd' : '#f4f7fb',
-                    transition: 'all .2s',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#4189DD'; e.currentTarget.style.background = '#eaf2fd' }}
-                  onMouseLeave={(e) => { if (!dragOver) { e.currentTarget.style.borderColor = '#dce6f5'; e.currentTarget.style.background = '#f4f7fb' } }}
-                >
-                  <div style={{ width: 40, height: 40, borderRadius: 10, background: '#eaf2fd', border: '1px solid #c8dff7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg viewBox="0 0 24 24" width={18} height={18} stroke="#4189DD" strokeWidth={2} fill="none">
-                      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                      <polyline points="17 8 12 3 7 8" />
-                      <line x1="12" y1="3" x2="12" y2="15" />
-                    </svg>
-                  </div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: '#3d4f6e' }}>Click to upload or drag &amp; drop</div>
-                  <div style={{ fontSize: 11, color: '#8a9bbf' }}>PNG, JPG, GIF up to 10MB each · max 4 images</div>
+              <div
+                onClick={() => fileRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  setDragOver(false)
+                  processFiles(Array.from(e.dataTransfer.files).filter((file) => file.type.startsWith('image/')))
+                }}
+                style={{
+                  border: `2px dashed ${dragOver ? '#4189DD' : '#dce6f5'}`,
+                  borderRadius: 12, padding: 20, cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  gap: 8, textAlign: 'center',
+                  background: dragOver ? '#eaf2fd' : '#f4f7fb',
+                  transition: 'all .2s',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#4189DD'; e.currentTarget.style.background = '#eaf2fd' }}
+                onMouseLeave={(e) => { if (!dragOver) { e.currentTarget.style.borderColor = '#dce6f5'; e.currentTarget.style.background = '#f4f7fb' } }}
+              >
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: '#eaf2fd', border: '1px solid #c8dff7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg viewBox="0 0 24 24" width={18} height={18} stroke="#4189DD" strokeWidth={2} fill="none">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
                 </div>
-              )}
+                <div style={{ fontSize: 13, fontWeight: 500, color: '#3d4f6e' }}>Click to upload or drag &amp; drop</div>
+                <div style={{ fontSize: 11, color: '#8a9bbf' }}>PNG, JPG, GIF up to 10MB each · 1 image</div>
+              </div>
 
-              {images.length > 0 && (
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: images.length < 4 ? 10 : 0 }}>
-                  {images.map((src, i) => (
-                    <div key={i} style={{ position: 'relative', flexShrink: 0 }}>
-                      <img
-                        src={src}
-                        alt={`preview ${i + 1}`}
-                        onClick={() => setLightbox(src)}
-                        style={{ width: 80, height: 64, borderRadius: 10, objectFit: 'cover', border: '1.5px solid #dce6f5', display: 'block', cursor: 'zoom-in' }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setImages((prev) => prev.filter((_, idx) => idx !== i))}
-                        style={{
-                          position: 'absolute', top: -6, right: -6, width: 18, height: 18,
-                          borderRadius: '50%', background: '#0c1220', color: '#fff',
-                          border: '2px solid #fff', display: 'flex', alignItems: 'center',
-                          justifyContent: 'center', fontSize: 10, cursor: 'pointer',
-                          fontWeight: 700, lineHeight: 1,
-                        }}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
+              {selectedImagePreview && (
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <img
+                      src={selectedImagePreview}
+                      alt="preview"
+                      onClick={() => setLightbox(selectedImagePreview)}
+                      style={{ width: 80, height: 64, borderRadius: 10, objectFit: 'cover', border: '1.5px solid #dce6f5', display: 'block', cursor: 'zoom-in' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImageFile(null)
+                        setSelectedImagePreview('')
+                      }}
+                      style={{
+                        position: 'absolute', top: -6, right: -6, width: 18, height: 18,
+                        borderRadius: '50%', background: '#0c1220', color: '#fff',
+                        border: '2px solid #fff', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', fontSize: 10, cursor: 'pointer',
+                        fontWeight: 700, lineHeight: 1,
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Footer */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 32px 26px' }}>
             <div style={{ fontSize: 12, color: '#8a9bbf', maxWidth: 300, lineHeight: 1.5 }}>
               Your question will be answered by the community and{' '}

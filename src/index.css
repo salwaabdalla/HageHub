@@ -1,5 +1,35 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;700&family=Playfair+Display:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@600;700;800&display=swap');
 @import "tailwindcss";
+
+/* ── Learn page design tokens ── */
+:root {
+  --learn-blue: #4189DD;
+  --learn-blue-dark: #1a5db5;
+  --learn-blue-deeper: #0f3d82;
+  --learn-blue-light: #eaf2fd;
+  --learn-blue-mid: #c8dff7;
+  --learn-blue-muted: #6aaae8;
+  --learn-bg: #f4f7fb;
+  --learn-bg2: #edf2f9;
+  --learn-text: #0c1220;
+  --learn-text-mid: #3d4f6e;
+  --learn-text-soft: #8a9bbf;
+  --learn-border: #dce6f5;
+  --learn-radius: 14px;
+  --learn-radius-lg: 20px;
+  --learn-green: #16a34a;
+  --learn-green-light: #dcfce7;
+  --learn-amber: #d97706;
+  --learn-amber-light: #fef3c7;
+  --learn-purple: #7c3aed;
+  --learn-purple-light: #ede9fe;
+  --learn-rose: #e11d48;
+  --learn-rose-light: #ffe4e6;
+  --learn-teal: #0d9488;
+  --learn-teal-light: #ccfbf1;
+  --learn-orange: #ea580c;
+  --learn-orange-light: #ffedd5;
+}
 
 @theme {
   --color-brand-500: #4189dd;

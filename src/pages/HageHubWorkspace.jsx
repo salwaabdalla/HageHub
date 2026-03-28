@@ -1,15 +1,19 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { contributors, questions as seedQuestions } from '../data/questions'
-import { learnCourses, LEARN_TRACKS, LEARN_PROGRESS_KEY } from '../data/learn'
+import { contributors as seededContributors } from '../data/questions'
 import { QuestionCard } from '../components/knowledge/QuestionCard'
 import { AskModal } from '../components/knowledge/AskModal'
-import { castVote } from '../lib/storage'
+import { fetchQuestions, insertQuestion } from '../lib/db/questions'
+import { fetchAnswers, insertAnswer } from '../lib/db/answers'
+import { fetchTopContributors } from '../lib/db/contributors'
+import { castVote, fetchUserVotes } from '../lib/db/votes'
+import { supabase } from '../lib/supabase'
+import { askHageAI } from '../lib/ai'
 
-const QUESTION_STORAGE_KEY = 'hagehub_questions'
 const COMMUNITY_FEED_KEY = 'hh_comments'
-const THREAD_COMMENT_KEY = 'hh_thread_comments'
-const AI_CHAT_KEY = 'hh_ai_messages'
+const BAD_TRANSLATIONS_KEY = 'hh_bad_translations'
+const FALLBACK_TAGS = ['algorithms', 'python', 'react', 'web-dev', 'ai/ml', 'system-design', 'somalia-tech']
+function aiChatKey(user) { return `hh_ai_messages_${user?.id || 'guest'}` }
 
 const topNavItems = [
   { label: 'Ask', to: '/home', page: 'dashboard' },
@@ -19,6 +23,7 @@ const topNavItems = [
   { label: 'Connect', to: '/connect', page: 'connect' },
   { label: 'Build', to: '/build', page: 'build' },
   { label: 'Stories', to: '/stories', page: 'stories' },
+  { label: 'Jobs', to: '/jobs', page: 'jobs' },
 ]
 
 const communitySeed = [
@@ -35,17 +40,23 @@ const communitySeed = [
 ]
 
 const mentorCards = [
-  ['AA', 'Abdi Axmed', 'Senior SWE · Google', ['Algorithms', 'System Design'], 'San Francisco, CA', '#4189DD'],
-  ['HM', 'Hodan Muuse', 'Product Manager · Meta', ['Product', 'Career Growth'], 'London, UK', '#1a5db5'],
-  ['YI', 'Yusuf Ibraahim', 'Full-Stack · Shopify', ['React', 'Node.js'], 'Toronto, Canada', '#0f3d82'],
-  ['FN', 'Faadumo Nuur', 'ML Engineer · Anthropic', ['AI/ML', 'Python'], 'Seattle, WA', '#6aaae8'],
+  ['AA', 'Abdi Axmed', 'Senior SWE - Google', ['Algorithms', 'System Design'], 'San Francisco, CA', '#4189DD'],
+  ['HM', 'Hodan Muuse', 'Product Manager - Meta', ['Product', 'Career Growth'], 'London, UK', '#1a5db5'],
+  ['YI', 'Yusuf Ibraahim', 'Full-Stack - Shopify', ['React', 'Node.js'], 'Toronto, Canada', '#0f3d82'],
+  ['FN', 'Faadumo Nuur', 'ML Engineer - Anthropic', ['AI/ML', 'Python'], 'Seattle, WA', '#6aaae8'],
 ]
 
 const jobs = [
-  ['AM', 'Amazon', 'Software Engineer — New Grad', 'Seattle, WA', '$140k–$165k', ['ft', 'som'], '#eaf2fd', '#1a5db5'],
-  ['ST', 'Stripe', 'Frontend Engineering Intern', 'Remote', '$8k/month', ['int', 'rem'], '#e8f5ee', '#1a6b4a'],
-  ['HB', 'Hormuud Telecom', 'Data Scientist — East Africa', 'Mogadishu', 'Competitive', ['ft', 'som'], '#f3f0ff', '#5b3fa0'],
-  ['GG', 'Golis Tech', 'Backend Engineer', 'Hargeisa / Remote', 'Competitive', ['ft', 'rem', 'som'], '#fff3e0', '#a06010'],
+  { logo: 'AM', company: 'Amazon', title: 'Software Engineer - New Grad', loc: 'Seattle, WA', salary: '$140k-$165k', tags: ['ft', 'som'], logoBg: '#eaf2fd', logoColor: '#1a5db5', type: 'Full-time', posted: '2 days ago', url: '#' },
+  { logo: 'ST', company: 'Stripe', title: 'Frontend Engineering Intern', loc: 'Remote', salary: '$8k/month', tags: ['int', 'rem'], logoBg: '#e8f5ee', logoColor: '#1a6b4a', type: 'Internship', posted: '3 days ago', url: '#' },
+  { logo: 'HB', company: 'Hormuud Telecom', title: 'Data Scientist - East Africa', loc: 'Mogadishu', salary: 'Competitive', tags: ['ft', 'som'], logoBg: '#f3f0ff', logoColor: '#5b3fa0', type: 'Full-time', posted: '1 week ago', url: '#' },
+  { logo: 'GG', company: 'Golis Tech', title: 'Backend Engineer', loc: 'Hargeisa / Remote', salary: 'Competitive', tags: ['ft', 'rem', 'som'], logoBg: '#fff3e0', logoColor: '#a06010', type: 'Full-time', posted: '1 week ago', url: '#' },
+  { logo: 'MS', company: 'Microsoft', title: 'Software Engineer II', loc: 'Redmond, WA', salary: '$160k-$190k', tags: ['ft', 'som'], logoBg: '#eaf2fd', logoColor: '#0f3d82', type: 'Full-time', posted: '4 days ago', url: '#' },
+  { logo: 'GL', company: 'Google', title: 'STEP Intern - Software Engineering', loc: 'Remote / NYC', salary: '$7k/month', tags: ['int', 'rem', 'som'], logoBg: '#fef9ee', logoColor: '#b45309', type: 'Internship', posted: '5 days ago', url: '#' },
+  { logo: 'DV', company: 'Dahabshiil', title: 'Mobile Developer (Flutter)', loc: 'Dubai / Remote', salary: 'Competitive', tags: ['ft', 'rem', 'som'], logoBg: '#f3f0ff', logoColor: '#5b3fa0', type: 'Full-time', posted: '2 weeks ago', url: '#' },
+  { logo: 'CL', company: 'Cloudflare', title: 'Network Engineer Intern', loc: 'Remote', salary: '$7.5k/month', tags: ['int', 'rem'], logoBg: '#fff3e0', logoColor: '#a06010', type: 'Internship', posted: '1 week ago', url: '#' },
+  { logo: 'SO', company: 'Somcable', title: 'Full-Stack Developer', loc: 'Mogadishu', salary: 'Competitive', tags: ['ft', 'som'], logoBg: '#e8f5ee', logoColor: '#1a6b4a', type: 'Full-time', posted: '3 days ago', url: '#' },
+  { logo: 'VR', company: 'Vercel', title: 'Developer Experience Engineer', loc: 'Remote (Global)', salary: '$130k-$155k', tags: ['ft', 'rem', 'som'], logoBg: '#f4f7fb', logoColor: '#334155', type: 'Full-time', posted: '6 days ago', url: '#' },
 ]
 
 const buildProjects = [
@@ -58,7 +69,7 @@ const buildProjects = [
     rolesOpen: ['AI/ML', 'Somali Translation'],
     tags: ['AI', 'Education', 'Somali'],
     members: [['AA', '#4189DD'], ['HM', '#1a5db5'], ['YI', '#0f3d82']],
-    impact: 'Somalia · Diaspora',
+    impact: 'Somalia - Diaspora',
   },
   {
     id: 'p2',
@@ -91,7 +102,7 @@ const buildProjects = [
     rolesOpen: ['Frontend', 'Curriculum Design', 'Video'],
     tags: ['Education', 'Somali', 'Full-Stack'],
     members: [],
-    impact: 'Somalia · Diaspora',
+    impact: 'Somalia - Diaspora',
   },
   {
     id: 'p5',
@@ -152,34 +163,26 @@ function initials(name = 'User') {
     .toUpperCase()
 }
 
-function normalizeQuestion(question) {
-  if (question.poster) return question
-
-  return {
-    id: String(question.id),
-    lang: 'both',
-    title: question.title?.so || question.title?.en || 'Untitled',
-    body: question.title?.en || question.title?.so || '',
-    tags: question.tags || [],
-    votes: question.upvotes || 0,
-    answers: question.answers || 0,
-    poster: {
-      init: initials(question.author?.name || 'User'),
-      name: question.author?.name || 'Community member',
-      loc: question.author?.city || 'Online',
-    },
-    time: question.createdAt
-      ? new Date(question.createdAt).toLocaleDateString()
-      : 'Just now',
-  }
+const getInitials = (name) => {
+  if (!name) return '?'
+  return name.split(' ')
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+    .substring(0, 2)
 }
 
-function getAllQuestions() {
-  return [
-    ...readStorage(QUESTION_STORAGE_KEY, []).map(normalizeQuestion),
-    ...seedQuestions.map(normalizeQuestion),
+const getAvatarColor = (name) => {
+  const colors = [
+    '#4189DD', '#1a5db5', '#0f3d82',
+    '#0d9488', '#7c3aed', '#e11d48',
+    '#d97706', '#16a34a',
   ]
+  let hash = 0
+  for (const c of (name || '')) hash += c.charCodeAt(0)
+  return colors[hash % colors.length]
 }
+
 
 function getCurrentPage(pathname) {
   if (pathname === '/home') return 'dashboard'
@@ -189,11 +192,42 @@ function getCurrentPage(pathname) {
   if (pathname === '/connect') return 'connect'
   if (pathname === '/build') return 'build'
   if (pathname === '/stories') return 'stories'
+  if (pathname === '/jobs') return 'jobs'
   if (pathname === '/profile') return 'profile'
   if (pathname === '/settings') return 'settings'
   return 'dashboard'
 }
 
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      window.setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+    }),
+  ])
+}
+
+function normalizeQuestion(row) {
+  return {
+    id: row.id,
+    lang: row.lang,
+    title: row.title,
+    body: row.body,
+    tags: row.tags ?? [],
+    images: row.images ?? [],
+    votes: row.vote_count ?? 0,
+    answers: row.answer_count ?? 0,
+    poster: {
+      init: row.poster_init,
+      name: row.poster_name,
+      loc: '',
+      photo: row.poster_photo ?? '',
+    },
+    time: new Date(row.created_at).toLocaleDateString('en-GB', {
+      day: 'numeric', month: 'short', year: 'numeric',
+    }),
+  }
+}
 
 function HageHubWorkspace({ user, onLogout }) {
   const navigate = useNavigate()
@@ -201,107 +235,216 @@ function HageHubWorkspace({ user, onLogout }) {
   const currentPage = getCurrentPage(pathname)
   const [activeThreadId, setActiveThreadId] = useState(routerState?.threadId ?? null)
   const [knowledgeFilter, setKnowledgeFilter] = useState('all')
+  const [selectedTag, setSelectedTag] = useState('all')
   const [connectTab, setConnectTab] = useState(
     user?.role === 'mentor' ? 'requests' : 'browse',
   )
   const [workTab, setWorkTab] = useState('all')
   const [buildTab, setBuildTab] = useState('all')
-  const [learnTrack, setLearnTrack] = useState('all')
-  const [learnCourseId, setLearnCourseId] = useState(null)
-  const [learnLessonId, setLearnLessonId] = useState(null)
-  const [learnProgress, setLearnProgress] = useState(() => readStorage(LEARN_PROGRESS_KEY, {}))
   const [joinedProjects, setJoinedProjects] = useState(() => new Set())
   const [profileTab, setProfileTab] = useState('activity')
   const [showAskModal, setShowAskModal] = useState(false)
   const [communityComments, setCommunityComments] = useState(() =>
     readStorage(COMMUNITY_FEED_KEY, communitySeed),
   )
-  const [threadComments, setThreadComments] = useState(() =>
-    readStorage(THREAD_COMMENT_KEY, {}),
-  )
-  const [aiMessages, setAiMessages] = useState(() =>
-    readStorage(AI_CHAT_KEY, [
-      {
-        id: 'welcome',
-        role: 'assistant',
-        content:
-          "Salaan. I'm Hage AI. Ask a CS question in Somali or English and I will keep it practical.",
-      },
-    ]),
-  )
+  const AI_WELCOME = [{ id: 'welcome', role: 'assistant', content: "Salaan. I'm Hage AI. Ask a CS question in Somali or English and I will keep it practical." }]
+  const [aiMessages, setAiMessages] = useState(() => readStorage(aiChatKey(user), AI_WELCOME))
+
+  // Reset AI chat when user changes (logout / login as different account)
+  useEffect(() => {
+    setAiMessages(readStorage(aiChatKey(user), AI_WELCOME))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
   const [aiInput, setAiInput] = useState('')
+  const [aiLanguage, setAiLanguage] = useState('both')
   const [aiLoading, setAiLoading] = useState(false)
   const [threadAiAnswers, setThreadAiAnswers] = useState({})
   const [threadAiLoading, setThreadAiLoading] = useState(false)
-  const [profilePic, setProfilePic] = useState(() => readStorage(`hh_pic_${user?.name}`, null))
-  const profilePicRef = useRef(null)
-  const [questionsVersion, setQuestionsVersion] = useState(0)
+  const [messageTranslations, setMessageTranslations] = useState({})
+  const [translatingId, setTranslatingId] = useState('')
   const [threadReply, setThreadReply] = useState('')
+  const [settingsForm, setSettingsForm] = useState(() => ({
+    notifications: {
+      answers: true,
+      mentorRequests: true,
+      jobAlerts: true,
+      communityDigest: true,
+      aiTranslations: true,
+    },
+    aiLanguage: 'Both (English + Somali)',
+    interfaceLanguage: 'English',
+  }))
+  const [settingsSaving, setSettingsSaving] = useState(false)
+  const [settingsMessage, setSettingsMessage] = useState('')
+  const [profileForm, setProfileForm] = useState({ name: user?.name ?? '', bio: '' })
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [profileMessage, setProfileMessage] = useState('')
 
-  const questions = getAllQuestions()
-  const activeThread = questions.find((question) => question.id === activeThreadId)
+  // Supabase state
+  const [questions, setQuestions] = useState([])
+  const [questionsLoading, setQuestionsLoading] = useState(true)
+  const [threadAnswers, setThreadAnswers] = useState([])
+  const [threadAnswersLoading, setThreadAnswersLoading] = useState(false)
+  const [userVotes, setUserVotes] = useState({}) // { [questionId]: -1|0|1 }
+  const [topContributors, setTopContributors] = useState([])
+  const userMeta = user?.metadata ?? {}
 
+  const activeThread = questions.find((q) => q.id === activeThreadId)
+  const availableTags = [...new Set(questions.flatMap((question) => question.tags ?? []))]
+  const sidebarTags = availableTags.length ? availableTags : FALLBACK_TAGS
+  const visibleContributors = topContributors.length ? topContributors : seededContributors
+  const filteredQuestions = questions
+    .filter((question) => {
+      if (knowledgeFilter === 'so') return question.lang === 'so' || question.lang === 'both'
+      if (knowledgeFilter === 'en') return question.lang === 'en' || question.lang === 'both'
+      if (knowledgeFilter === 'mine') return question.poster.name === user?.name
+      return true
+    })
+    .filter((question) => {
+      if (selectedTag === 'all') return true
+      return question.tags?.includes(selectedTag)
+    })
+  const showQuestionsLoading = questionsLoading && questions.length === 0
+  const showQuestionsEmpty = !questionsLoading && filteredQuestions.length === 0
+
+  // Load questions from Supabase on mount
+  useEffect(() => {
+    async function load() {
+      setQuestionsLoading(true)
+      try {
+        const rows = await withTimeout(fetchQuestions(), 15000, 'Questions fetch')
+        const normalized = rows.map(normalizeQuestion)
+        setQuestions(normalized)
+        // Load this user's votes for all fetched questions
+        if (user?.id && rows.length) {
+          const ids = rows.map((r) => r.id)
+          const votes = await withTimeout(fetchUserVotes(user.id, ids), 8000, 'Votes fetch')
+          setUserVotes(votes)
+        }
+      } catch (err) {
+        console.error('Failed to load questions:', err)
+        // Keep the last good question state if a fetch fails.
+        setQuestions((prev) => prev)
+      } finally {
+        setQuestionsLoading(false)
+      }
+    }
+    load()
+  }, [user?.id])
+
+  useEffect(() => {
+    setSettingsForm({
+      notifications: {
+        answers: userMeta.notify_answers ?? true,
+        mentorRequests: userMeta.notify_mentor_requests ?? true,
+        jobAlerts: userMeta.notify_job_alerts ?? true,
+        communityDigest: userMeta.notify_community_digest ?? true,
+        aiTranslations: userMeta.notify_ai_translations ?? true,
+      },
+      aiLanguage: userMeta.ai_language ?? 'Both (English + Somali)',
+      interfaceLanguage: userMeta.interface_language ?? 'English',
+    })
+  }, [
+    userMeta.ai_language,
+    userMeta.interface_language,
+    userMeta.notify_ai_translations,
+    userMeta.notify_answers,
+    userMeta.notify_community_digest,
+    userMeta.notify_job_alerts,
+    userMeta.notify_mentor_requests,
+  ])
+
+  useEffect(() => {
+    setProfileForm({
+      name: userMeta.name || user?.name || '',
+      bio: userMeta.bio || '',
+    })
+  }, [user?.name, userMeta.bio, userMeta.name])
+
+  useEffect(() => {
+    fetchTopContributors()
+      .then((rows) => {
+        if (rows?.length) setTopContributors(rows)
+      })
+      .catch((err) => {
+        console.error('Failed to load contributors:', err)
+        setTopContributors((prev) => (prev.length ? prev : seededContributors))
+      })
+  }, [])
+
+  // Load answers whenever the active thread changes — no guard on activeThread
+  // so answers load even if questions haven't finished rendering yet.
+  useEffect(() => {
+    if (!activeThreadId) return
+    setThreadAnswers([]) // reset so stale answers from previous thread don't show
+    setThreadAnswersLoading(true)
+    withTimeout(fetchAnswers(activeThreadId), 10000, 'Answers fetch')
+      .then(setThreadAnswers)
+      .catch(console.error)
+      .finally(() => setThreadAnswersLoading(false))
+  }, [activeThreadId])
+  // Load AI answer when a thread opens.
   useEffect(() => {
     if (!activeThreadId || !activeThread) return
     if (threadAiAnswers[activeThreadId]) return
     setThreadAiLoading(true)
     const prompt = activeThread.title + (activeThread.body ? '\n\n' + activeThread.body : '')
-    fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are Hage AI, a bilingual CS tutor for the Somali tech community. Answer the question below in BOTH languages. Lead with "🇸🇴 Somali:" then "🇬🇧 English:". Keep it practical, beginner-friendly, and under 150 words per language.',
-          },
-          { role: 'user', content: prompt },
-        ],
-        max_tokens: 600,
-      }),
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        const answer =
-          data.choices?.[0]?.message?.content ||
-          '🇸🇴 Waan ka xumahay, jawaab ma helin.\n🇬🇧 Sorry, no answer available.'
+    const threadLang = activeThread.lang === 'so' ? 'so' : activeThread.lang === 'en' ? 'en' : 'both'
+    askHageAI(prompt, threadLang)
+      .then((answer) => {
         setThreadAiAnswers((prev) => ({ ...prev, [activeThreadId]: answer }))
       })
       .catch(() => {
         setThreadAiAnswers((prev) => ({
           ...prev,
-          [activeThreadId]: '🇸🇴 Xiriirka AI-ga wuu jabay.\n🇬🇧 AI connection failed. Please try again.',
+          [activeThreadId]: {
+            content: 'Af Soomaali: Xiriirka AI-ga wuu jabay.\n---\nEnglish: AI connection failed. Check your Groq API key.',
+            warning: '',
+          },
         }))
       })
       .finally(() => setThreadAiLoading(false))
-  }, [activeThreadId])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeThreadId, activeThread])
 
-  function handleLogout() {
-    onLogout()
+  async function handleLogout() {
+    await onLogout()
     navigate('/login')
   }
 
-  function markLessonComplete(lessonId) {
-    const next = { ...learnProgress, [lessonId]: true }
-    setLearnProgress(next)
-    writeStorage(LEARN_PROGRESS_KEY, next)
-  }
-
-  function handleVote(id, delta) {
-    const result = castVote(id, delta > 0 ? 1 : -1)
-    setQuestionsVersion((v) => v + 1)
+  // Vote on a question (used by QuestionCard and thread detail)
+  async function handleVote(questionId, value) {
+    if (!user?.id) return
+    const result = await castVote(questionId, user.id, value)
+    // Update local vote state
+    setUserVotes((prev) => ({ ...prev, [questionId]: result.userVote }))
+    // Update question vote count in local list
+    setQuestions((prev) =>
+      prev.map((q) => q.id === questionId ? { ...q, votes: result.newVoteCount } : q)
+    )
     return result
   }
 
-  function handlePostQuestion(questionData) {
-    const stored = readStorage(QUESTION_STORAGE_KEY, [])
-    writeStorage(QUESTION_STORAGE_KEY, [questionData, ...stored])
-    setQuestionsVersion((v) => v + 1)
+  // Post a new question to Supabase
+  async function handlePostQuestion(questionData) {
+    try {
+      const row = await insertQuestion({
+        user_id: user?.id ?? null,
+        lang: questionData.lang,
+        title: questionData.title,
+        body: questionData.body,
+        tags: questionData.tags,
+        images: questionData.images,
+        poster_name: questionData.poster?.name || user?.name || 'Community member',
+        poster_init: questionData.poster?.init || initials(user?.name),
+        poster_photo: questionData.poster?.photo || '',
+      })
+      setQuestions((prev) => [normalizeQuestion(row), ...prev])
+      setKnowledgeFilter('all')
+      setSelectedTag('all')
+    } catch (err) {
+      console.error('Failed to post question:', err)
+    }
     setShowAskModal(false)
   }
 
@@ -314,22 +457,30 @@ function HageHubWorkspace({ user, onLogout }) {
     writeStorage(COMMUNITY_FEED_KEY, next)
   }
 
-  function postThreadReply(event) {
+  // Post an answer to the active thread via Supabase
+  async function postThreadReply(event) {
     event.preventDefault()
     if (!activeThreadId || !threadReply.trim()) return
-    const next = {
-      ...threadComments,
-      [activeThreadId]: [
-        ...(threadComments[activeThreadId] || []),
-        { id: String(Date.now()), name: user?.name || 'Community member', text: threadReply.trim() },
-      ],
-    }
-    setThreadComments(next)
-    writeStorage(THREAD_COMMENT_KEY, next)
-    postCommunityComment(threadReply.trim())
+    const text = threadReply.trim()
     setThreadReply('')
+    try {
+      const row = await insertAnswer({
+        question_id: activeThreadId,
+        user_id: user?.id ?? null,
+        body: text,
+        poster_name: user?.name || 'Community member',
+        poster_init: initials(user?.name),
+      })
+      setThreadAnswers((prev) => [...prev, row])
+      // Bump local answer count
+      setQuestions((prev) =>
+        prev.map((q) => q.id === activeThreadId ? { ...q, answers: q.answers + 1 } : q)
+      )
+      postCommunityComment(text)
+    } catch (err) {
+      console.error('Failed to post answer:', err)
+    }
   }
-
   async function sendAi(event) {
     event.preventDefault()
     if (!aiInput.trim() || aiLoading) return
@@ -341,43 +492,134 @@ function HageHubWorkspace({ user, onLogout }) {
     setAiLoading(true)
     postCommunityComment(userText)
     try {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [
-            {
-              role: 'system',
-              content:
-                'You are Hage AI, a bilingual CS tutor built for the Somali tech community. Always answer in BOTH Somali (af Soomaali) and English. Lead with the Somali explanation labelled "🇸🇴 Somali:", then follow with the English explanation labelled "🇬🇧 English:". Keep answers practical, concise, and encouraging. You are part of HageHub — the first digital infrastructure for Somali technologists worldwide.',
-            },
-            ...withUser.map(({ role, content }) => ({ role, content })),
-          ],
-          max_tokens: 1024,
-        }),
-      })
-      const data = await res.json()
-      const reply =
-        data.choices?.[0]?.message?.content ||
-        '🇸🇴 Somali: Waan ka xumahay, jawaab ma helin.\n🇬🇧 English: Sorry, no response was received.'
-      const assistantMsg = { id: `a-${Date.now()}`, role: 'assistant', content: reply }
+      const reply = await askHageAI(
+        userText,
+        aiLanguage,
+        withUser.slice(-6).map(({ role, content }) => ({ role, content })),
+      )
+      const assistantMsg = {
+        id: `a-${Date.now()}`,
+        role: 'assistant',
+        content: reply.content,
+        warning: reply.warning,
+      }
       const next = [...withUser, assistantMsg]
       setAiMessages(next)
-      writeStorage(AI_CHAT_KEY, next)
-    } catch {
+      writeStorage(aiChatKey(user), next)
+    } catch (err) {
+      console.error('Groq fetch failed:', err)
       const errMsg = {
         id: `a-${Date.now()}`,
         role: 'assistant',
-        content:
-          '🇸🇴 Somali: Waan ka xumahay, xiriirka API-ga wuu jabay.\n🇬🇧 English: Sorry, the connection failed. Please try again.',
+        content: `Waan ka xumahay, jawaabta AI-ga way fashilantay. Fadlan mar kale isku day. Faahfaahin: ${err.message}`,
+        warning: '',
       }
       setAiMessages([...withUser, errMsg])
     } finally {
       setAiLoading(false)
+    }
+  }
+
+  async function saveSettings() {
+    setSettingsSaving(true)
+    setSettingsMessage('')
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          ...userMeta,
+          ai_language: settingsForm.aiLanguage,
+          interface_language: settingsForm.interfaceLanguage,
+          notify_answers: settingsForm.notifications.answers,
+          notify_mentor_requests: settingsForm.notifications.mentorRequests,
+          notify_job_alerts: settingsForm.notifications.jobAlerts,
+          notify_community_digest: settingsForm.notifications.communityDigest,
+          notify_ai_translations: settingsForm.notifications.aiTranslations,
+        },
+      })
+      if (error) throw error
+      setSettingsMessage('Settings saved.')
+    } catch (err) {
+      console.error('Failed to save settings:', err)
+      setSettingsMessage('Could not save settings.')
+    } finally {
+      setSettingsSaving(false)
+    }
+  }
+
+  async function saveProfile() {
+    setProfileSaving(true)
+    setProfileMessage('')
+    try {
+      const trimmedName = profileForm.name.trim() || user?.name || 'User'
+      const trimmedBio = profileForm.bio.trim()
+
+      const { error: authError } = await supabase.auth.updateUser({
+        data: {
+          ...userMeta,
+          name: trimmedName,
+          bio: trimmedBio,
+        },
+      })
+      if (authError) throw authError
+
+      if (user?.id) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ name: trimmedName })
+          .eq('id', user.id)
+        if (profileError) throw profileError
+      }
+
+      setProfileMessage('Profile saved.')
+    } catch (err) {
+      console.error('Failed to save profile:', err)
+      setProfileMessage('Could not save profile.')
+    } finally {
+      setProfileSaving(false)
+    }
+  }
+
+  function reportBadTranslation(payload) {
+    const existing = readStorage(BAD_TRANSLATIONS_KEY, [])
+    const next = [
+      ...existing,
+      {
+        id: Date.now(),
+        userId: user?.id ?? null,
+        userName: user?.name ?? 'User',
+        createdAt: new Date().toISOString(),
+        ...payload,
+      },
+    ]
+    writeStorage(BAD_TRANSLATIONS_KEY, next)
+  }
+
+  async function translateAiResponse(id, content, targetLang) {
+    setTranslatingId(id)
+    try {
+      const reply = await askHageAI(
+        `Translate this response into ${targetLang === 'so' ? 'natural Somali' : 'clear English'} while preserving the meaning:\n\n${content}`,
+        targetLang,
+      )
+      setMessageTranslations((prev) => ({
+        ...prev,
+        [id]: {
+          content: reply.content,
+          warning: reply.warning,
+          targetLang,
+        },
+      }))
+    } catch (err) {
+      setMessageTranslations((prev) => ({
+        ...prev,
+        [id]: {
+          content: `Translation failed: ${err.message}`,
+          warning: '',
+          targetLang,
+        },
+      }))
+    } finally {
+      setTranslatingId('')
     }
   }
 
@@ -406,11 +648,23 @@ function HageHubWorkspace({ user, onLogout }) {
           <div className="flex flex-wrap items-center gap-3">
             <NavLink to="/profile" className="flex items-center gap-3 rounded-full bg-white px-3 py-2">
               <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full">
-                {profilePic ? (
-                  <img src={profilePic} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-[#4189DD] text-xs font-semibold text-white">{initials(user?.name)}</div>
-                )}
+                <div style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: '50%',
+                  background: getAvatarColor(user?.metadata?.name || user?.name),
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontFamily: 'DM Sans, sans-serif',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: '#fff',
+                  flexShrink: 0,
+                  cursor: 'pointer',
+                }}>
+                  {getInitials(user?.metadata?.name || user?.name)}
+                </div>
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-900">{user?.name}</p>
@@ -460,13 +714,13 @@ function HageHubWorkspace({ user, onLogout }) {
                 <div className="space-y-4">
                   <div className="rounded-[24px] border border-[#dce6f5] bg-[#f4f7fb] p-5">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400">
-                      Shared activity
+                      Knowledge Layer
                     </p>
                     <p className="mt-3 font-display text-3xl text-slate-950">
-                      {communityComments.length} community comments
+                      {questions.length}
                     </p>
                     <p className="mt-2 text-sm leading-7 text-slate-600">
-                      Shared discussion remains visible after logout, so another user still sees the community history.
+                      Real questions from the community knowledge feed are synced here so you can jump straight into what matters.
                     </p>
                   </div>
                   <div className="rounded-[24px] bg-[#0f3d82] p-5 text-white">
@@ -491,7 +745,7 @@ function HageHubWorkspace({ user, onLogout }) {
                   + Ask a Question
                 </button>
                 <div className="space-y-3">
-                  {questions.slice(0, 4).map((question) => (
+                  {questions.slice(0, 3).map((question) => (
                     <article key={question.id} className="cursor-pointer rounded-[20px] border border-[#dce6f5] bg-white px-5 py-5 transition hover:-translate-y-0.5 hover:border-[#c8dff7] hover:shadow-[0_8px_24px_rgba(65,137,221,0.08)]" onClick={() => navigate('/ask', { state: { threadId: question.id } })}>
                       <div className="flex gap-4">
                         <div className="flex min-w-8 flex-col items-center gap-1">
@@ -525,7 +779,7 @@ function HageHubWorkspace({ user, onLogout }) {
                 <section className="rounded-[20px] border border-[#dce6f5] bg-white p-5">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">Top Contributors</p>
                   <div className="mt-4 space-y-3">
-                    {contributors.map((contributor, index) => (
+                    {topContributors.map((contributor, index) => (
                       <div key={contributor.name} className="flex items-center gap-3 border-b border-[#dce6f5] pb-3 last:border-b-0 last:pb-0">
                         <span className="w-5 font-display text-xl text-slate-400">{index + 1}.</span>
                         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#4189DD] text-xs font-semibold text-white">{initials(contributor.name)}</div>
@@ -548,9 +802,9 @@ function HageHubWorkspace({ user, onLogout }) {
                 </section>
                 <section className="rounded-[20px] bg-[#0f3d82] p-5 text-white">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/55">My Cohort</p>
-                  <p className="mt-3 font-display text-3xl">Abdi Axmed · Mentor</p>
-                  <p className="mt-2 text-sm text-white/70">Interview Prep · Week 3 of 8</p>
-                  <div className="mt-4 h-2 rounded-full bg-white/10"><div className="h-full w-[37.5%] rounded-full bg-[#6aaae8]" /></div>
+                  <p className="mt-3 font-display text-3xl">No active cohort yet</p>
+                  <p className="mt-2 text-sm text-white/70">Find a mentor in Connect ?</p>
+                  <NavLink to="/connect" className="mt-4 inline-flex rounded-full bg-[#4189DD] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#6aaae8]">Find a mentor in Connect ?</NavLink>
                 </section>
               </aside>
             </section>
@@ -596,13 +850,22 @@ function HageHubWorkspace({ user, onLogout }) {
                 {/* Meta row */}
                 <div className="mt-5 flex flex-wrap items-center gap-4 border-b border-[#dce6f5] pb-5">
                   <div className="flex items-center gap-2.5">
-                    {profilePic && activeThread.poster.name === user?.name ? (
-                      <img src={profilePic} alt="" className="h-9 w-9 rounded-full object-cover" />
-                    ) : (
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#4189DD] text-xs font-semibold text-white">
-                        {activeThread.poster.init}
-                      </div>
-                    )}
+                    <div style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      background: getAvatarColor(activeThread.poster.name),
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontFamily: 'DM Sans, sans-serif',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: '#fff',
+                      flexShrink: 0,
+                    }}>
+                      {getInitials(activeThread.poster.name)}
+                    </div>
                     <div>
                       <p className="text-sm font-semibold text-slate-900">{activeThread.poster.name}</p>
                       {activeThread.poster.loc && <p className="text-xs text-slate-400">{activeThread.poster.loc}</p>}
@@ -616,7 +879,7 @@ function HageHubWorkspace({ user, onLogout }) {
                       <button type="button" onClick={() => handleVote(activeThread.id, -1)} className="flex h-8 w-8 items-center justify-center rounded-[10px] border border-[#dce6f5] bg-[#f4f7fb] text-xs text-slate-400 transition hover:border-red-300 hover:text-red-400">▼</button>
                     </div>
                     <span className="text-sm text-slate-400">
-                      {(threadComments[activeThreadId] || []).length} {(threadComments[activeThreadId] || []).length === 1 ? 'answer' : 'answers'}
+                      {threadAnswers.length} {threadAnswers.length === 1 ? 'answer' : 'answers'}
                     </span>
                   </div>
                 </div>
@@ -652,29 +915,73 @@ function HageHubWorkspace({ user, onLogout }) {
                   </div>
                 ) : (
                   <p className="mt-3 whitespace-pre-wrap text-sm leading-8 text-white/85">
-                    {threadAiAnswers[activeThreadId] || ''}
+                    {threadAiAnswers[activeThreadId]?.content || ''}
                   </p>
                 )}
+                {threadAiAnswers[activeThreadId]?.warning ? <p className="mt-3 text-xs text-amber-200">{threadAiAnswers[activeThreadId].warning}</p> : null}
+                {threadAiAnswers[activeThreadId]?.content ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => translateAiResponse(`thread-${activeThreadId}`, threadAiAnswers[activeThreadId].content, activeThread?.lang === 'so' ? 'en' : 'so')}
+                      className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white"
+                    >
+                      {translatingId === `thread-${activeThreadId}` ? 'Translating...' : 'Translate'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => reportBadTranslation({ source: 'thread-ai', content: threadAiAnswers[activeThreadId].content, warning: threadAiAnswers[activeThreadId].warning, questionId: activeThreadId })}
+                      className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white"
+                    >
+                      Report bad translation
+                    </button>
+                  </div>
+                ) : null}
+                {messageTranslations[`thread-${activeThreadId}`] ? (
+                  <div className="mt-4 rounded-[16px] bg-white/10 px-4 py-3 text-sm text-white/90">
+                    <p className="font-semibold">{messageTranslations[`thread-${activeThreadId}`].targetLang === 'so' ? 'Somali translation' : 'English translation'}</p>
+                    <p className="mt-2 whitespace-pre-wrap">{messageTranslations[`thread-${activeThreadId}`].content}</p>
+                    {messageTranslations[`thread-${activeThreadId}`].warning ? <p className="mt-2 text-xs text-amber-200">{messageTranslations[`thread-${activeThreadId}`].warning}</p> : null}
+                  </div>
+                ) : null}
               </div>
 
-              {/* Community answers / comments */}
+              {/* Community answers */}
               <div className="mt-6">
                 <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-                  Community Answers ({(threadComments[activeThreadId] || []).length})
+                  Community Answers ({threadAnswers.length})
                 </p>
 
-                {(threadComments[activeThreadId] || []).length === 0 ? (
+                {threadAnswersLoading ? (
+                  <div className="rounded-[20px] border border-[#dce6f5] bg-white p-8 text-center text-sm text-slate-400">
+                    Loading answers…
+                  </div>
+                ) : threadAnswers.length === 0 ? (
                   <div className="rounded-[20px] border border-dashed border-[#dce6f5] bg-white p-8 text-center text-sm text-slate-400">
                     No answers yet — be the first to help.
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {(threadComments[activeThreadId] || []).map((comment) => (
-                      <div key={comment.id} className="flex gap-4 rounded-[20px] border border-[#dce6f5] bg-white p-5">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#eaf2fd] text-[10px] font-semibold text-[#1a5db5]">{initials(comment.name)}</div>
+                    {threadAnswers.map((answer) => (
+                      <div key={answer.id} className="flex gap-4 rounded-[20px] border border-[#dce6f5] bg-white p-5">
+                        <div style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: '50%',
+                          background: getAvatarColor(answer.poster_name),
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 10,
+                          fontWeight: 600,
+                          color: '#fff',
+                          flexShrink: 0,
+                        }}>
+                          {getInitials(answer.poster_name)}
+                        </div>
                         <div>
-                          <p className="text-sm font-semibold text-slate-900">{comment.name}</p>
-                          <p className="mt-1.5 text-sm leading-7 text-slate-600">{comment.text}</p>
+                          <p className="text-sm font-semibold text-slate-900">{answer.poster_name}</p>
+                          <p className="mt-1.5 text-sm leading-7 text-slate-600">{answer.body}</p>
                         </div>
                       </div>
                     ))}
@@ -713,26 +1020,46 @@ function HageHubWorkspace({ user, onLogout }) {
                     <button key={value} type="button" onClick={() => setKnowledgeFilter(value)} className={`rounded-full px-4 py-2 text-sm font-medium transition ${knowledgeFilter === value ? 'bg-[#4189DD] text-white shadow-[0_4px_12px_rgba(65,137,221,0.25)]' : 'border border-[#dce6f5] bg-white text-slate-500 hover:border-[#c8dff7]'}`}>
                       {label}
                     </button>
+                    ))}
+                </div>
+
+                <div className="mb-5 flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setSelectedTag('all')} className={`rounded-full px-4 py-2 text-sm font-medium transition ${selectedTag === 'all' ? 'bg-[#4189DD] text-white shadow-[0_4px_12px_rgba(65,137,221,0.25)]' : 'border border-[#dce6f5] bg-white text-slate-500 hover:border-[#c8dff7]'}`}>
+                    All tags
+                  </button>
+                  {sidebarTags.map((tag) => (
+                    <button key={tag} type="button" onClick={() => setSelectedTag(tag)} className={`rounded-full px-4 py-2 text-sm font-medium transition ${selectedTag === tag ? 'bg-[#4189DD] text-white shadow-[0_4px_12px_rgba(65,137,221,0.25)]' : 'border border-[#dce6f5] bg-white text-slate-500 hover:border-[#c8dff7]'}`}>
+                      #{tag}
+                    </button>
                   ))}
                 </div>
 
                 {/* Questions list */}
                 <div className="space-y-3">
-                  {questions
-                    .filter((question) => {
-                      if (knowledgeFilter === 'so') return question.lang === 'so' || question.lang === 'both'
-                      if (knowledgeFilter === 'en') return question.lang === 'en' || question.lang === 'both'
-                      if (knowledgeFilter === 'mine') return question.poster.name === user?.name
-                      return true
-                    })
-                    .map((question) => (
-                      <QuestionCard
-                        key={question.id}
-                        question={question}
-                        threadComments={threadComments}
-                        onOpen={() => setActiveThreadId(question.id)}
-                      />
-                    ))}
+                  {showQuestionsLoading ? (
+                    <div className="rounded-[20px] border border-[#dce6f5] bg-white p-10 text-center text-sm text-slate-400">
+                      Loading questions...
+                    </div>
+                  ) : showQuestionsEmpty ? (
+                    <div className="rounded-[20px] border border-dashed border-[#dce6f5] bg-white p-10 text-center">
+                      <p className="text-sm text-slate-500">
+                        {questions.length === 0 ? 'No questions yet. Be the first to ask one!' : 'No questions match the current filters.'}
+                      </p>
+                      <button type="button" onClick={() => setShowAskModal(true)} className="mt-4 rounded-full bg-[#4189DD] px-5 py-3 text-sm font-medium text-white transition hover:bg-[#1a5db5]">
+                        Ask a Question
+                      </button>
+                    </div>
+                  ) : (
+                    filteredQuestions.map((question) => (
+                        <QuestionCard
+                          key={question.id}
+                          question={question}
+                          onOpen={() => setActiveThreadId(question.id)}
+                          userVote={userVotes[question.id] ?? 0}
+                          onVote={handleVote}
+                        />
+                      ))
+                  )}
                 </div>
               </div>
 
@@ -741,7 +1068,7 @@ function HageHubWorkspace({ user, onLogout }) {
                 <section className="rounded-[20px] border border-[#dce6f5] bg-white p-5">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">Top Contributors</p>
                   <div className="mt-4 space-y-3">
-                    {contributors.slice(0, 3).map((contributor, index) => (
+                    {visibleContributors.slice(0, 3).map((contributor, index) => (
                       <div key={contributor.name} className="flex items-center gap-3">
                         <span className="w-5 font-display text-xl text-slate-400">{index + 1}.</span>
                         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#4189DD] text-xs font-semibold text-white">{initials(contributor.name)}</div>
@@ -757,8 +1084,8 @@ function HageHubWorkspace({ user, onLogout }) {
                 <section className="rounded-[20px] border border-[#dce6f5] bg-white p-5">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">Popular Tags</p>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    {['algorithms', 'python', 'react', 'web-dev', 'ai/ml', 'system-design', 'somalia-tech'].map((tag) => (
-                      <span key={tag} className="rounded-full border border-[#dce6f5] bg-[#f4f7fb] px-3 py-1.5 text-xs font-medium text-slate-600">#{tag}</span>
+                    {sidebarTags.map((tag) => (
+                      <button key={tag} type="button" onClick={() => setSelectedTag(tag)} className={`rounded-full border px-3 py-1.5 text-xs font-medium ${selectedTag === tag ? 'border-[#4189DD] bg-[#4189DD] text-white' : 'border-[#dce6f5] bg-[#f4f7fb] text-slate-600'}`}>#{tag}</button>
                     ))}
                   </div>
                 </section>
@@ -766,282 +1093,6 @@ function HageHubWorkspace({ user, onLogout }) {
             </div>
           )
         ) : null}
-
-        {currentPage === 'learn' ? (() => {
-          const activeCourse = learnCourses.find((c) => c.id === learnCourseId)
-          const activeLesson = activeCourse?.lessons.find((l) => l.id === learnLessonId)
-          const filteredCourses = learnTrack === 'all' ? learnCourses : learnCourses.filter((c) => c.track === learnTrack)
-
-          // ── Lesson detail view ──
-          if (activeCourse && activeLesson) {
-            const lessonIndex = activeCourse.lessons.indexOf(activeLesson)
-            const prevLesson = activeCourse.lessons[lessonIndex - 1]
-            const nextLesson = activeCourse.lessons[lessonIndex + 1]
-            const isDone = learnProgress[activeLesson.id]
-            return (
-              <div className="mx-auto max-w-3xl">
-                {/* Breadcrumb */}
-                <div className="mb-6 flex items-center gap-2 text-sm text-slate-400">
-                  <button type="button" onClick={() => { setLearnCourseId(null); setLearnLessonId(null) }} className="transition hover:text-[#4189DD]">Kayd Learn</button>
-                  <span>/</span>
-                  <button type="button" onClick={() => setLearnLessonId(null)} className="transition hover:text-[#4189DD]">{activeCourse.title.en}</button>
-                  <span>/</span>
-                  <span className="text-slate-600">{activeLesson.title.en}</span>
-                </div>
-
-                <div className="rounded-[24px] border border-[#dce6f5] bg-white overflow-hidden">
-                  {/* Lesson header */}
-                  <div style={{ background: activeCourse.color }} className="px-8 py-6">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
-                        Lesson {lessonIndex + 1} of {activeCourse.lessons.length}
-                      </span>
-                      {isDone && (
-                        <span className="flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white">
-                          ✓ Completed
-                        </span>
-                      )}
-                    </div>
-                    <h1 style={{ fontFamily: "'Cormorant Garamond', serif" }} className="mt-3 text-3xl font-semibold text-white leading-snug">
-                      {activeLesson.title.en}
-                    </h1>
-                    <p className="mt-1 text-white/70 text-sm">{activeLesson.title.so}</p>
-                  </div>
-
-                  {/* Bilingual body */}
-                  <div className="p-8 space-y-6">
-                    <div className="grid gap-5 lg:grid-cols-2">
-                      <div className="rounded-[16px] bg-[#eaf2fd] p-5 border border-[#c8dff7]">
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="text-lg">🇸🇴</span>
-                          <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#1a5db5]">Af Soomaali</span>
-                        </div>
-                        <p className="text-sm leading-7 text-[#0c1220] whitespace-pre-line">{activeLesson.body.so}</p>
-                      </div>
-                      <div className="rounded-[16px] bg-[#f4f7fb] p-5 border border-[#dce6f5]">
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="text-lg">🇬🇧</span>
-                          <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">English</span>
-                        </div>
-                        <p className="text-sm leading-7 text-slate-700 whitespace-pre-line">{activeLesson.body.en}</p>
-                      </div>
-                    </div>
-
-                    {/* Code block */}
-                    {activeLesson.code && (
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Code Example</span>
-                        </div>
-                        <pre className="rounded-[16px] bg-[#0c1220] p-5 overflow-x-auto text-[13px] leading-6 text-[#e2e8f0]" style={{ fontFamily: 'monospace' }}>
-                          <code>{activeLesson.code}</code>
-                        </pre>
-                      </div>
-                    )}
-
-                    {/* Ask AI + Complete row */}
-                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#dce6f5]">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const q = `Explain "${activeLesson.title.en}" — ${activeCourse.title.en}`
-                          setAiMessages((prev) => [...prev, { id: `u-${Date.now()}`, role: 'user', content: q }])
-                          navigate('/ai')
-                        }}
-                        className="flex items-center gap-2 rounded-full border border-[#c8dff7] bg-[#eaf2fd] px-4 py-2 text-sm font-medium text-[#1a5db5] transition hover:bg-[#dbeeff]"
-                      >
-                        <span className="text-base">🤖</span> Ask Hage AI about this lesson
-                      </button>
-
-                      {!isDone ? (
-                        <button
-                          type="button"
-                          onClick={() => markLessonComplete(activeLesson.id)}
-                          style={{ background: activeCourse.color }}
-                          className="rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(65,137,221,0.3)] transition hover:opacity-90"
-                        >
-                          ✓ Mark as Complete
-                        </button>
-                      ) : (
-                        <span className="rounded-full bg-[#e8f5ee] px-5 py-2.5 text-sm font-semibold text-[#1a6b4a]">
-                          ✓ Completed
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Prev / Next navigation */}
-                    <div className="flex items-center justify-between gap-4 pt-2">
-                      {prevLesson ? (
-                        <button type="button" onClick={() => setLearnLessonId(prevLesson.id)} className="flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-[#4189DD]">
-                          ← {prevLesson.title.en}
-                        </button>
-                      ) : <div />}
-                      {nextLesson ? (
-                        <button type="button" onClick={() => { markLessonComplete(activeLesson.id); setLearnLessonId(nextLesson.id) }} style={{ background: activeCourse.color }} className="flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90">
-                          Next: {nextLesson.title.en} →
-                        </button>
-                      ) : (
-                        <button type="button" onClick={() => setLearnLessonId(null)} className="flex items-center gap-2 rounded-full bg-[#0f3d82] px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90">
-                          ← Back to course
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )
-          }
-
-          // ── Course detail / lesson list view ──
-          if (activeCourse) {
-            const completedCount = activeCourse.lessons.filter((l) => learnProgress[l.id]).length
-            const pct = Math.round((completedCount / activeCourse.lessons.length) * 100)
-            return (
-              <div className="mx-auto max-w-3xl">
-                <button type="button" onClick={() => setLearnCourseId(null)} className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-slate-400 transition hover:text-[#4189DD]">
-                  ← Back to Kayd Learn
-                </button>
-
-                {/* Course header */}
-                <div className="rounded-[24px] overflow-hidden border border-[#dce6f5] mb-6">
-                  <div style={{ background: activeCourse.color }} className="px-8 py-7">
-                    <div className="flex items-start gap-4">
-                      <span className="text-4xl">{activeCourse.emoji}</span>
-                      <div className="flex-1">
-                        <div className="flex flex-wrap items-center gap-2 mb-2">
-                          <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white capitalize">{activeCourse.difficulty}</span>
-                          {activeCourse.tags.map((t) => (
-                            <span key={t} className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/80">{t}</span>
-                          ))}
-                        </div>
-                        <h1 style={{ fontFamily: "'Cormorant Garamond', serif" }} className="text-3xl font-semibold text-white leading-snug">{activeCourse.title.en}</h1>
-                        <p className="mt-1 text-white/70 text-sm">{activeCourse.title.so}</p>
-                        <p className="mt-3 text-white/80 text-sm leading-6">{activeCourse.description}</p>
-                      </div>
-                    </div>
-                    {completedCount > 0 && (
-                      <div className="mt-5">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-xs text-white/70">{completedCount} of {activeCourse.lessons.length} lessons complete</span>
-                          <span className="text-xs font-bold text-white">{pct}%</span>
-                        </div>
-                        <div className="h-1.5 rounded-full bg-white/20">
-                          <div className="h-full rounded-full bg-white transition-all" style={{ width: `${pct}%` }} />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Lesson list */}
-                <div className="space-y-3">
-                  {activeCourse.lessons.map((lesson, i) => {
-                    const done = learnProgress[lesson.id]
-                    return (
-                      <div
-                        key={lesson.id}
-                        onClick={() => setLearnLessonId(lesson.id)}
-                        className="flex items-center gap-5 rounded-[20px] border border-[#dce6f5] bg-white p-5 cursor-pointer transition hover:-translate-y-0.5 hover:border-[#c8dff7] hover:shadow-[0_8px_24px_rgba(65,137,221,0.08)]"
-                      >
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold" style={{ background: done ? activeCourse.color : '#f4f7fb', color: done ? '#fff' : '#8a9bbf', border: `1.5px solid ${done ? activeCourse.color : '#dce6f5'}` }}>
-                          {done ? '✓' : i + 1}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p style={{ fontFamily: "'Cormorant Garamond', serif" }} className="text-xl font-semibold text-slate-900">{lesson.title.en}</p>
-                          <p className="text-xs text-slate-400 mt-0.5">{lesson.title.so}</p>
-                        </div>
-                        <svg viewBox="0 0 24 24" width={16} height={16} stroke="#8a9bbf" strokeWidth={2} fill="none" className="shrink-0">
-                          <polyline points="9 18 15 12 9 6" />
-                        </svg>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          }
-
-          // ── Course catalog view ──
-          return (
-            <div>
-              {/* Page header */}
-              <div className="mb-8">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-400">Layer 1</p>
-                <h1 style={{ fontFamily: "'Cormorant Garamond', serif" }} className="mt-1 text-5xl font-semibold text-slate-950 tracking-tight">Kayd · Learn</h1>
-                <p className="mt-3 max-w-xl text-[15px] leading-7 text-slate-500">
-                  Structured CS courses in both Somali and English. From your first line of code to interview-ready.
-                </p>
-              </div>
-
-              {/* Track filter */}
-              <div className="mb-6 flex flex-wrap gap-2">
-                {LEARN_TRACKS.map(({ id, label }) => (
-                  <button key={id} type="button" onClick={() => setLearnTrack(id)} className={`rounded-full px-4 py-2 text-sm font-medium transition ${learnTrack === id ? 'bg-[#4189DD] text-white shadow-[0_4px_12px_rgba(65,137,221,0.25)]' : 'border border-[#dce6f5] bg-white text-slate-500 hover:border-[#c8dff7]'}`}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Course grid */}
-              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredCourses.map((course) => {
-                  const completedCount = course.lessons.filter((l) => learnProgress[l.id]).length
-                  const pct = Math.round((completedCount / course.lessons.length) * 100)
-                  const started = completedCount > 0
-                  return (
-                    <div
-                      key={course.id}
-                      onClick={() => setLearnCourseId(course.id)}
-                      className="flex flex-col rounded-[20px] border border-[#dce6f5] bg-white overflow-hidden cursor-pointer transition hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(65,137,221,0.12)] hover:border-[#c8dff7]"
-                    >
-                      {/* Color strip */}
-                      <div className="h-2" style={{ background: course.color }} />
-                      <div className="flex-1 p-6 flex flex-col gap-4">
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="text-3xl">{course.emoji}</span>
-                          <span className="rounded-full border border-[#dce6f5] bg-[#f4f7fb] px-3 py-1 text-[10px] font-semibold capitalize text-slate-500">{course.difficulty}</span>
-                        </div>
-                        <div>
-                          <h3 style={{ fontFamily: "'Cormorant Garamond', serif" }} className="text-2xl font-semibold text-slate-950 leading-snug">{course.title.en}</h3>
-                          <p className="text-xs text-slate-400 mt-0.5">{course.title.so}</p>
-                          <p className="mt-2 text-sm leading-6 text-slate-500 line-clamp-2">{course.description}</p>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {course.tags.map((t) => (
-                            <span key={t} className="rounded-full bg-[#f4f7fb] border border-[#dce6f5] px-2.5 py-0.5 text-[10px] font-medium text-slate-500">#{t}</span>
-                          ))}
-                        </div>
-
-                        {/* Progress or lesson count */}
-                        <div className="mt-auto">
-                          {started ? (
-                            <>
-                              <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-xs text-slate-400">{completedCount}/{course.lessons.length} lessons</span>
-                                <span className="text-xs font-bold" style={{ color: course.color }}>{pct}%</span>
-                              </div>
-                              <div className="h-1.5 rounded-full bg-[#f4f7fb]">
-                                <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: course.color }} />
-                              </div>
-                            </>
-                          ) : (
-                            <p className="text-xs text-slate-400">{course.lessons.length} lessons</p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="px-6 pb-5">
-                        <div className="flex items-center justify-between rounded-[12px] px-4 py-3 text-sm font-semibold text-white" style={{ background: course.color }}>
-                          {started ? (pct === 100 ? '✓ Completed' : 'Continue →') : 'Start Course →'}
-                          <span className="text-white/70 text-xs font-normal">{course.lessons.length} lessons</span>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )
-        })() : null}
 
         {currentPage === 'ai' ? (
           <section className="rounded-[28px] border border-[#dce6f5] bg-white shadow-[0_18px_60px_rgba(65,137,221,0.08)]">
@@ -1051,13 +1102,50 @@ function HageHubWorkspace({ user, onLogout }) {
                 <p className="font-display text-3xl text-slate-950">Hage AI Assistant</p>
                 <p className="text-sm text-slate-400">Ask anything in Somali or English.</p>
               </div>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  ['both', 'Both'],
+                  ['en', 'English'],
+                  ['so', 'Somali'],
+                ].map(([value, label]) => (
+                  <button key={value} type="button" onClick={() => setAiLanguage(value)} className={`rounded-full px-4 py-2 text-sm font-medium ${aiLanguage === value ? 'bg-[#4189DD] text-white' : 'border border-[#dce6f5] bg-white text-slate-500'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="flex min-h-[420px] flex-col gap-4 px-6 py-6">
               <div className="flex-1 space-y-4 overflow-y-auto">
                 {aiMessages.map((message) => (
                   <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[75%] whitespace-pre-wrap rounded-[16px] px-4 py-3 text-sm leading-7 ${message.role === 'user' ? 'bg-[#4189DD] text-white' : 'border border-[#dce6f5] bg-[#f4f7fb] text-slate-600'}`}>
-                      {message.content}
+                    <div className={`max-w-[75%] rounded-[16px] px-4 py-3 text-sm leading-7 ${message.role === 'user' ? 'bg-[#4189DD] text-white' : 'border border-[#dce6f5] bg-[#f4f7fb] text-slate-600'}`}>
+                      <div className="whitespace-pre-wrap">{message.content}</div>
+                      {message.warning ? <p className="mt-3 text-xs text-amber-600">{message.warning}</p> : null}
+                      {message.role === 'assistant' ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => translateAiResponse(message.id, message.content, aiLanguage === 'so' ? 'en' : 'so')}
+                            className="rounded-full border border-[#dce6f5] bg-white px-3 py-1 text-xs font-medium text-slate-600"
+                          >
+                            {translatingId === message.id ? 'Translating...' : 'Translate'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => reportBadTranslation({ source: 'ai-chat', content: message.content, warning: message.warning })}
+                            className="rounded-full border border-[#dce6f5] bg-white px-3 py-1 text-xs font-medium text-slate-600"
+                          >
+                            Report bad translation
+                          </button>
+                        </div>
+                      ) : null}
+                      {messageTranslations[message.id] ? (
+                        <div className="mt-3 rounded-[12px] border border-[#dce6f5] bg-white px-3 py-2 text-xs text-slate-600">
+                          <p className="font-semibold text-slate-700">{messageTranslations[message.id].targetLang === 'so' ? 'Somali translation' : 'English translation'}</p>
+                          <p className="mt-1 whitespace-pre-wrap">{messageTranslations[message.id].content}</p>
+                          {messageTranslations[message.id].warning ? <p className="mt-2 text-amber-600">{messageTranslations[message.id].warning}</p> : null}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -1153,7 +1241,7 @@ function HageHubWorkspace({ user, onLogout }) {
               <div className="rounded-[20px] bg-[#0f3d82] p-6 text-white">
                 <h3 className="font-display text-3xl">Cohort with Abdi Axmed</h3>
                 <p className="mt-2 text-sm text-white/70">Focus: Interview Prep + System Design · Started March 1, 2024</p>
-                <div className="mt-4 h-2 rounded-full bg-white/10"><div className="h-full w-[37.5%] rounded-full bg-[#6aaae8]" /></div>
+                <NavLink to="/connect" className="mt-4 inline-flex rounded-full bg-[#4189DD] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#6aaae8]">Find a mentor in Connect ?</NavLink>
                 <p className="mt-2 text-xs text-white/45">Week 3 of 8 complete</p>
               </div>
             ) : connectTab === 'pending' ? (
@@ -1359,50 +1447,98 @@ function HageHubWorkspace({ user, onLogout }) {
           </div>
         ) : null}
 
-        {currentPage === 'work' ? (
+        {currentPage === 'jobs' ? (
           <div>
+            {/* Header */}
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">Fursan - Opportunities</p>
+                <h2 className="font-display text-4xl text-slate-950">Jobs &amp; Internships</h2>
+                <p className="mt-2 text-sm text-slate-500">Curated for Somali technologists — remote, diaspora, and East Africa.</p>
+              </div>
+              <button
+                type="button"
+                className="shrink-0 rounded-full bg-[#4189DD] px-5 py-3 text-sm font-medium text-white shadow-[0_6px_18px_rgba(65,137,221,0.28)] transition hover:bg-[#1a5db5]"
+              >
+                + Post a Job
+              </button>
+            </div>
+
+            {/* Filters */}
             <div className="mb-5 flex flex-wrap gap-2">
               {[
                 ['all', 'All Jobs'],
-                ['intern', 'Internships'],
-                ['remote', 'Remote'],
-                ['somalia', 'Somalia'],
-                ['saved', 'Saved'],
+                ['ft', 'Full-time'],
+                ['int', 'Internships'],
+                ['rem', 'Remote'],
+                ['som', 'Somalia - Diaspora'],
               ].map(([value, label]) => (
-                <button key={value} type="button" onClick={() => setWorkTab(value)} className={`rounded-full px-4 py-2 text-sm font-medium ${workTab === value ? 'bg-[#4189DD] text-white' : 'border border-[#dce6f5] bg-white text-slate-500'}`}>
+                <button key={value} type="button" onClick={() => setWorkTab(value)}
+                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${workTab === value ? 'bg-[#4189DD] text-white shadow-[0_4px_12px_rgba(65,137,221,0.24)]' : 'border border-[#dce6f5] bg-white text-slate-500 hover:border-[#4189DD] hover:text-[#4189DD]'}`}>
                   {label}
                 </button>
               ))}
             </div>
-            {jobs.filter((job) => {
-              if (workTab === 'intern') return job[5].includes('int')
-              if (workTab === 'remote') return job[5].includes('rem')
-              if (workTab === 'somalia') return job[5].includes('som')
-              if (workTab === 'saved') return false
-              return true
-            }).length ? (
-              <div className="space-y-3">
-                {jobs.filter((job) => {
-                  if (workTab === 'intern') return job[5].includes('int')
-                  if (workTab === 'remote') return job[5].includes('rem')
-                  if (workTab === 'somalia') return job[5].includes('som')
-                  if (workTab === 'saved') return false
-                  return true
-                }).map(([logo, company, title, loc, salary, tags, logoBg, logoColor]) => (
-                  <article key={`${company}-${title}`} className="flex items-center gap-4 rounded-[20px] border border-[#dce6f5] bg-white px-5 py-4 transition hover:translate-x-1 hover:border-[#4189DD]">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-[14px] font-display text-sm font-bold" style={{ backgroundColor: logoBg, color: logoColor }}>{logo}</div>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-slate-900">{title}</p>
-                      <p className="text-xs text-slate-400">{company} · {loc} · {salary}</p>
-                      <div className="mt-2 flex flex-wrap gap-2">{tags.map((tag) => <span key={tag} className="rounded-full bg-[#f4f7fb] px-3 py-1 text-[10px] font-semibold uppercase text-slate-600">{tag}</span>)}</div>
-                    </div>
-                    <span className="text-slate-400">→</span>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-[20px] border border-[#dce6f5] bg-white p-10 text-center text-slate-400">Saved jobs appear here.</div>
-            )}
+
+            {/* Job cards */}
+            {(() => {
+              const filtered = jobs.filter((job) => {
+                if (workTab === 'all') return true
+                return job.tags.includes(workTab)
+              })
+              if (!filtered.length) {
+                return (
+                  <div className="rounded-[20px] border border-[#dce6f5] bg-white p-12 text-center">
+                    <p className="text-slate-400">No jobs match this filter right now.</p>
+                  </div>
+                )
+              }
+              return (
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {filtered.map((job) => (
+                    <article key={`${job.company}-${job.title}`}
+                      className="flex gap-4 rounded-[20px] border border-[#dce6f5] bg-white p-5 transition hover:-translate-y-0.5 hover:border-[#4189DD] hover:shadow-[0_10px_28px_rgba(65,137,221,0.08)]">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] font-display text-sm font-bold"
+                        style={{ backgroundColor: job.logoBg, color: job.logoColor }}>
+                        {job.logo}
+                      </div>
+                      <div className="flex flex-1 flex-col gap-2">
+                        <div>
+                          <p className="font-semibold text-slate-900">{job.title}</p>
+                          <p className="text-sm text-slate-500">{job.company} · {job.loc}</p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-[#eaf2fd] px-3 py-1 text-[11px] font-semibold text-[#1a5db5]">{job.type}</span>
+                          <span className="rounded-full bg-[#f4f7fb] px-3 py-1 text-[11px] font-semibold text-slate-600">{job.salary}</span>
+                          {job.tags.includes('rem') && (
+                            <span className="rounded-full bg-[#e8f5ee] px-3 py-1 text-[11px] font-semibold text-[#1a6b4a]">Remote</span>
+                          )}
+                          {job.tags.includes('som') && (
+                            <span className="rounded-full bg-[#f3f0ff] px-3 py-1 text-[11px] font-semibold text-[#5b3fa0]">🇸🇴 Somali-friendly</span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-slate-400">Posted {job.posted}</span>
+                          <a href={job.url} target="_blank" rel="noopener noreferrer"
+                            className="rounded-full bg-[#4189DD] px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-[#1a5db5]">
+                            Apply {'->'}
+                          </a>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )
+            })()}
+
+            {/* Bottom call-to-action */}
+            <div className="mt-8 rounded-[20px] border border-[#dce6f5] bg-white p-6 text-center">
+              <p className="font-display text-2xl text-slate-950">Hiring Somali talent?</p>
+              <p className="mt-2 text-sm text-slate-500">Post your role and reach engineers, designers, and founders in the diaspora and East Africa.</p>
+              <button type="button" className="mt-4 rounded-full bg-[#4189DD] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#1a5db5]">
+                Post a Job — Free
+              </button>
+            </div>
           </div>
         ) : null}
 
@@ -1441,41 +1577,25 @@ function HageHubWorkspace({ user, onLogout }) {
           <div>
             <section className="rounded-[24px] border border-[#dce6f5] bg-white p-6">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-                <button
-                  type="button"
-                  onClick={() => profilePicRef.current?.click()}
-                  className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full"
-                  title="Click to change photo"
-                >
-                  {profilePic ? (
-                    <img src={profilePic} alt="Profile" className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-[#4189DD] text-2xl font-semibold text-white">{initials(user?.name)}</div>
-                  )}
-                  <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/30 opacity-0 transition hover:opacity-100">
-                    <span className="text-xs font-semibold text-white">Edit</span>
-                  </div>
-                </button>
-                <input
-                  ref={profilePicRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (!file) return
-                    const reader = new FileReader()
-                    reader.onload = (ev) => {
-                      const dataUrl = ev.target.result
-                      setProfilePic(dataUrl)
-                      writeStorage(`hh_pic_${user?.name}`, dataUrl)
-                    }
-                    reader.readAsDataURL(file)
-                  }}
-                />
+                <div style={{
+                  width: 88,
+                  height: 88,
+                  borderRadius: '50%',
+                  background: getAvatarColor(user?.metadata?.name || user?.name),
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontFamily: 'Cormorant Garamond, serif',
+                  fontSize: 32,
+                  fontWeight: 700,
+                  color: '#fff',
+                }}>
+                  {getInitials(user?.metadata?.name || user?.name)}
+                </div>
                 <div>
                   <h2 className="font-display text-4xl text-slate-950">{user?.name}</h2>
-                  <p className="mt-2 text-sm text-slate-500">{user?.role === 'mentor' ? 'Mentor · Senior SWE' : 'Student · Somali Tech Community'}</p>
+                  <p className="mt-2 text-sm text-slate-500">{user?.role === 'mentor' ? 'Mentor - Senior SWE' : 'Student - Somali Tech Community'}</p>
+                  <p className="mt-2 text-xs text-slate-400">Profile photos coming soon</p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {(user?.role === 'mentor' ? ['Mentor', 'Google SWE', 'San Francisco', '124 Answers'] : ['Student', 'Mogadishu', '7 Questions', '3 Answers']).map((chip) => (
                       <span key={chip} className="rounded-full bg-[#f4f7fb] px-3 py-2 text-xs font-medium text-slate-600">{chip}</span>
@@ -1524,8 +1644,14 @@ function HageHubWorkspace({ user, onLogout }) {
             ) : (
               <div className="rounded-[20px] border border-[#dce6f5] bg-white p-5">
                 <div className="space-y-4">
-                  <label className="block text-sm text-slate-600">Display Name<input className="mt-2 w-full rounded-[12px] border border-[#dce6f5] bg-[#f4f7fb] px-4 py-3 outline-none" defaultValue={user?.name} /></label>
-                  <label className="block text-sm text-slate-600">Bio<textarea className="mt-2 min-h-28 w-full rounded-[12px] border border-[#dce6f5] bg-[#f4f7fb] px-4 py-3 outline-none" defaultValue={user?.role === 'mentor' ? 'Senior Software Engineer passionate about giving back to the Somali tech community.' : 'CS student passionate about building technology for Somalia.'} /></label>
+                  <label className="block text-sm text-slate-600">Display Name<input value={profileForm.name} onChange={(event) => setProfileForm((prev) => ({ ...prev, name: event.target.value }))} className="mt-2 w-full rounded-[12px] border border-[#dce6f5] bg-[#f4f7fb] px-4 py-3 outline-none" /></label>
+                  <label className="block text-sm text-slate-600">Bio<textarea value={profileForm.bio} onChange={(event) => setProfileForm((prev) => ({ ...prev, bio: event.target.value }))} className="mt-2 min-h-28 w-full rounded-[12px] border border-[#dce6f5] bg-[#f4f7fb] px-4 py-3 outline-none" /></label>
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={saveProfile} disabled={profileSaving} className="rounded-full bg-[#4189DD] px-5 py-3 text-sm font-medium text-white transition hover:bg-[#1a5db5] disabled:opacity-50">
+                      {profileSaving ? 'Saving...' : 'Save profile'}
+                    </button>
+                    {profileMessage ? <p className="text-sm text-slate-500">{profileMessage}</p> : null}
+                  </div>
                 </div>
               </div>
             )}
@@ -1539,10 +1665,28 @@ function HageHubWorkspace({ user, onLogout }) {
               <section className="rounded-[20px] border border-[#dce6f5] bg-white p-5">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Notifications</p>
                 <div className="mt-4 space-y-4">
-                  {['New answers on my questions', 'New mentor requests', 'Job alerts', 'Community digest', 'AI translations ready'].map((item) => (
+                  {[
+                    ['answers', 'New answers on my questions'],
+                    ['mentorRequests', 'New mentor requests'],
+                    ['jobAlerts', 'Job alerts'],
+                    ['communityDigest', 'Community digest'],
+                    ['aiTranslations', 'AI translations ready'],
+                  ].map(([key, item]) => (
                     <div key={item} className="flex items-center justify-between gap-4">
                       <span className="text-sm text-slate-600">{item}</span>
-                      <div className="h-7 w-12 rounded-full bg-[#4189DD]/20 p-1"><div className="h-5 w-5 rounded-full bg-[#4189DD]" /></div>
+                      <button
+                        type="button"
+                        onClick={() => setSettingsForm((prev) => ({
+                          ...prev,
+                          notifications: {
+                            ...prev.notifications,
+                            [key]: !prev.notifications[key],
+                          },
+                        }))}
+                        className={`h-7 w-12 rounded-full p-1 transition ${settingsForm.notifications[key] ? 'bg-[#4189DD]/20' : 'bg-slate-200'}`}
+                      >
+                        <div className={`h-5 w-5 rounded-full transition ${settingsForm.notifications[key] ? 'translate-x-5 bg-[#4189DD]' : 'translate-x-0 bg-white'}`} />
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -1550,10 +1694,16 @@ function HageHubWorkspace({ user, onLogout }) {
               <section className="rounded-[20px] border border-[#dce6f5] bg-white p-5">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Language</p>
                 <div className="mt-4 space-y-4">
-                  <label className="block text-sm text-slate-600">Default AI response language<select className="mt-2 w-full rounded-[12px] border border-[#dce6f5] bg-[#f4f7fb] px-4 py-3 outline-none"><option>Both (English + Somali)</option><option>English only</option><option>Somali only</option></select></label>
-                  <label className="block text-sm text-slate-600">Interface language<select className="mt-2 w-full rounded-[12px] border border-[#dce6f5] bg-[#f4f7fb] px-4 py-3 outline-none"><option>English</option><option>Somali (af Soomaali)</option></select></label>
+                  <label className="block text-sm text-slate-600">Default AI response language<select value={settingsForm.aiLanguage} onChange={(event) => setSettingsForm((prev) => ({ ...prev, aiLanguage: event.target.value }))} className="mt-2 w-full rounded-[12px] border border-[#dce6f5] bg-[#f4f7fb] px-4 py-3 outline-none"><option>Both (English + Somali)</option><option>English only</option><option>Somali only</option></select></label>
+                  <label className="block text-sm text-slate-600">Interface language<select value={settingsForm.interfaceLanguage} onChange={(event) => setSettingsForm((prev) => ({ ...prev, interfaceLanguage: event.target.value }))} className="mt-2 w-full rounded-[12px] border border-[#dce6f5] bg-[#f4f7fb] px-4 py-3 outline-none"><option>English</option><option>Somali (af Soomaali)</option></select></label>
                 </div>
               </section>
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={saveSettings} disabled={settingsSaving} className="rounded-full bg-[#4189DD] px-5 py-3 text-sm font-medium text-white transition hover:bg-[#1a5db5] disabled:opacity-50">
+                  {settingsSaving ? 'Saving...' : 'Save settings'}
+                </button>
+                {settingsMessage ? <p className="text-sm text-slate-500">{settingsMessage}</p> : null}
+              </div>
             </div>
           </div>
         ) : null}
@@ -1570,3 +1720,6 @@ function HageHubWorkspace({ user, onLogout }) {
 }
 
 export default HageHubWorkspace
+
+
+

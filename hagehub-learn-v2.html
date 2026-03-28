@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hage Hub — Learn</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --blue:#4189DD;--blue-dark:#1a5db5;--blue-deeper:#0f3d82;
+  --blue-light:#eaf2fd;--blue-mid:#c8dff7;--blue-muted:#6aaae8;
+  --white:#fff;--bg:#f4f7fb;--bg2:#edf2f9;
+  --text:#0c1220;--text-mid:#3d4f6e;--text-soft:#8a9bbf;
+  --border:#dce6f5;--radius:14px;--radius-lg:20px;
+  --green:#16a34a;--green-light:#dcfce7;
+  --amber:#d97706;--amber-light:#fef3c7;
+  --purple:#7c3aed;--purple-light:#ede9fe;
+  --rose:#e11d48;--rose-light:#ffe4e6;
+  --teal:#0d9488;--teal-light:#ccfbf1;
+  --orange:#ea580c;--orange-light:#ffedd5;
+}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+
+/* ── NAV ── */
+nav{height:64px;background:var(--white);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:16px;position:sticky;top:0;z-index:100}
+.nav-logo{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:700;color:var(--text);cursor:pointer;white-space:nowrap}
+.nav-pills{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:100px;padding:4px;gap:2px;margin:0 auto}
+.nav-pill{padding:7px 16px;border-radius:100px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text-soft);border:none;background:transparent;font-family:'DM Sans',sans-serif;transition:all .15s}
+.nav-pill:hover{color:var(--text)}
+.nav-pill.active{background:var(--blue);color:#fff;font-weight:600}
+.nav-right{display:flex;align-items:center;gap:10px}
+.nav-av{width:34px;height:34px;border-radius:50%;background:var(--blue);font-size:12px;font-weight:600;color:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;flex-shrink:0;cursor:pointer}
+.nav-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.nav-notif{width:34px;height:34px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;position:relative;transition:all .2s}
+.nav-notif:hover{background:var(--blue-light)}
+.notif-badge{position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--rose);border:2px solid var(--white)}
+
+/* ── SCREENS ── */
+.screen{display:none}
+.screen.active{display:block;animation:fadeUp .2s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* ══════════════
+   FIELD PICKER
+══════════════ */
+.picker-page{max-width:1140px;margin:0 auto;padding:48px 24px}
+.picker-hero{margin-bottom:48px}
+.picker-eyebrow{font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--text-soft);margin-bottom:10px}
+.picker-title{font-family:'Cormorant Garamond',serif;font-size:clamp(36px,5vw,60px);font-weight:700;color:var(--text);line-height:1.05;margin-bottom:14px}
+.picker-title em{color:var(--blue);font-style:normal}
+.picker-sub{font-size:15px;color:var(--text-mid);line-height:1.7;max-width:560px}
+.picker-sub strong{color:var(--text)}
+
+.joined-banner{display:flex;gap:10px;align-items:center;background:var(--blue-light);border:1px solid var(--blue-mid);border-radius:var(--radius);padding:12px 18px;margin-bottom:28px;flex-wrap:wrap}
+.joined-banner p{font-size:13px;color:var(--blue-dark);flex:1}
+.joined-banner strong{font-weight:700}
+.joined-chips{display:flex;gap:6px;flex-wrap:wrap}
+.joined-chip{padding:4px 12px;background:var(--blue);color:#fff;border-radius:100px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s}
+.joined-chip:hover{background:var(--blue-dark)}
+
+.search-bar{position:relative;margin-bottom:28px;max-width:400px}
+.search-bar input{width:100%;padding:10px 16px 10px 40px;border:1.5px solid var(--border);border-radius:100px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);background:var(--white);outline:none;transition:all .2s}
+.search-bar input:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-light)}
+.search-bar::before{content:'🔍';position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:13px}
+
+.fields-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.field-card{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:24px;cursor:pointer;transition:all .22s;position:relative;overflow:hidden}
+.field-card:hover{transform:translateY(-3px)}
+.field-card .joined-pill{position:absolute;top:14px;right:14px;padding:3px 10px;border-radius:100px;font-size:10px;font-weight:700;background:var(--green-light);color:var(--green);border:1px solid #bbf7d0}
+.fc-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:16px;transition:transform .2s}
+.field-card:hover .fc-icon{transform:scale(1.08)}
+.fc-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:700;color:var(--text);margin-bottom:4px}
+.fc-desc{font-size:12px;color:var(--text-soft);line-height:1.55;margin-bottom:14px}
+.fc-stats{display:flex;gap:14px;margin-bottom:14px}
+.fc-stat{font-size:11px;color:var(--text-soft);display:flex;align-items:center;gap:4px}
+.fc-stat span{font-weight:700;color:var(--text-mid)}
+.fc-bar{height:3px;border-radius:100px;background:var(--border);overflow:hidden;margin-bottom:5px}
+.fc-bar-fill{height:100%;border-radius:100px;transition:width .5s}
+.fc-prog-lbl{font-size:10px;color:var(--text-soft)}
+.fc-join-btn{width:100%;padding:9px;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;border:1.5px solid var(--border);background:transparent;color:var(--text-mid);margin-top:12px}
+.fc-join-btn:hover{background:var(--blue);border-color:var(--blue);color:#fff}
+.fc-join-btn.joined{background:var(--green-light);border-color:#bbf7d0;color:var(--green)}
+
+/* ══════════════
+   FIELD HUB
+══════════════ */
+.hub-page{display:flex;height:calc(100vh - 64px);overflow:hidden}
+
+/* left sidebar */
+.hub-sidebar{width:220px;min-width:220px;background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+.hs-top{padding:18px 16px 12px;border-bottom:1px solid var(--border)}
+.hs-back{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-soft);cursor:pointer;margin-bottom:14px;background:none;border:none;font-family:'DM Sans',sans-serif;transition:color .15s}
+.hs-back:hover{color:var(--blue)}
+.hs-back svg{width:14px;height:14px;stroke:currentColor;stroke-width:2;fill:none}
+.hs-field-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:10px}
+.hs-field-name{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:700;color:var(--text);margin-bottom:2px}
+.hs-members{font-size:11px;color:var(--text-soft)}
+.hs-members strong{color:var(--green);font-weight:700}
+.hs-nav{padding:10px 0;flex:1}
+.hs-section{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-soft);padding:10px 16px 4px}
+.hs-item{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;color:var(--text-mid);font-size:13px;font-weight:500;border-radius:9px;margin:1px 6px;transition:all .15s;position:relative}
+.hs-item:hover{background:var(--blue-light);color:var(--blue)}
+.hs-item.active{background:var(--blue-light);color:var(--blue);font-weight:600}
+.hs-item.active::before{content:'';position:absolute;left:-6px;top:50%;transform:translateY(-50%);width:3px;height:18px;background:var(--blue);border-radius:0 3px 3px 0}
+.hs-item-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;background:transparent}
+.hs-item.active .hs-item-icon{background:rgba(65,137,221,.15)}
+.hs-badge{margin-left:auto;background:var(--blue);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:100px}
+.hs-badge.green{background:var(--green)}
+.hs-online-section{padding:12px 16px;border-top:1px solid var(--border)}
+.hs-online-title{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-soft);margin-bottom:10px}
+.online-member{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.om-av{width:26px;height:26px;border-radius:50%;font-size:9px;font-weight:600;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative}
+.om-dot{position:absolute;bottom:0;right:0;width:7px;height:7px;border-radius:50%;background:var(--green);border:2px solid var(--white)}
+.om-name{font-size:12px;font-weight:500;color:var(--text-mid)}
+
+/* main content */
+.hub-main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.hub-panel{display:none;flex:1;flex-direction:column}
+.hub-panel.active{display:flex}
+
+/* ══════════
+  PANEL: OVERVIEW
+══════════ */
+.overview-content{padding:28px;max-width:900px}
+.ov-header{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px 32px;margin-bottom:22px;position:relative;overflow:hidden}
+.ov-header::after{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;opacity:.06;pointer-events:none}
+.ov-title{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:700;color:var(--text);margin-bottom:6px}
+.ov-desc{font-size:14px;color:var(--text-mid);line-height:1.7;max-width:560px;margin-bottom:18px}
+.ov-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.ov-chip{padding:5px 14px;border-radius:100px;font-size:12px;font-weight:600;background:var(--bg);border:1px solid var(--border);color:var(--text-mid)}
+.ov-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.ov-stat{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+.ov-stat-val{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:var(--blue)}
+.ov-stat-lbl{font-size:11px;color:var(--text-soft);margin-top:2px}
+.ov-two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.ov-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px}
+.ov-card-title{font-weight:700;font-size:13px;color:var(--text);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.mentor-mini{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:all .15s}
+.mentor-mini:last-child{border-bottom:none}
+.mentor-mini:hover{opacity:.8}
+.mm-av{width:36px;height:36px;border-radius:50%;font-size:12px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mm-name{font-size:13px;font-weight:600;color:var(--text)}
+.mm-role{font-size:11px;color:var(--text-soft)}
+.mm-available{margin-left:auto;width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0}
+.event-item{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.event-item:last-child{border-bottom:none}
+.event-date{width:44px;height:44px;background:var(--blue-light);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0}
+.event-day{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:700;color:var(--blue);line-height:1}
+.event-month{font-size:9px;font-weight:700;color:var(--blue-muted);text-transform:uppercase;letter-spacing:.5px}
+.event-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px}
+.event-meta{font-size:11px;color:var(--text-soft)}
+
+/* ══════════
+  PANEL: GROUP CHAT
+══════════ */
+.chat-panel{display:flex;flex:1;overflow:hidden}
+.chat-main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.chat-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:var(--white);flex-shrink:0}
+.chat-header-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.chat-header-name{font-weight:700;font-size:14px;color:var(--text)}
+.chat-header-sub{font-size:11px;color:var(--text-soft)}
+.chat-online-count{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:12px;color:var(--green);font-weight:600}
+.chat-online-dot{width:7px;height:7px;border-radius:50%;background:var(--green)}
+.chat-messages{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:4px}
+.chat-messages::-webkit-scrollbar{width:4px}
+.chat-messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.chat-day-divider{text-align:center;font-size:11px;color:var(--text-soft);margin:12px 0;display:flex;align-items:center;gap:10px}
+.chat-day-divider::before,.chat-day-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.chat-msg{display:flex;gap:10px;align-items:flex-start;padding:3px 0}
+.chat-msg.own{flex-direction:row-reverse}
+.chat-msg.grouped{padding-top:1px}
+.chat-msg.grouped .msg-av-wrap{opacity:0}
+.msg-av-wrap{width:34px;flex-shrink:0}
+.msg-av{width:34px;height:34px;border-radius:50%;font-size:11px;font-weight:600;color:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.msg-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.msg-content{max-width:68%}
+.msg-meta{display:flex;align-items:center;gap:7px;margin-bottom:4px}
+.msg-name{font-size:12px;font-weight:700;color:var(--text)}
+.msg-role-pill{padding:1px 7px;border-radius:100px;font-size:9px;font-weight:700;background:var(--blue-light);color:var(--blue-dark)}
+.msg-role-pill.mentor{background:var(--amber-light);color:var(--amber)}
+.msg-time{font-size:10px;color:var(--text-soft)}
+.msg-bubble{padding:10px 14px;border-radius:16px;font-size:13px;line-height:1.6;color:var(--text-mid);position:relative;word-break:break-word}
+.chat-msg:not(.own) .msg-bubble{background:var(--white);border:1px solid var(--border);border-top-left-radius:4px}
+.chat-msg.own .msg-bubble{background:var(--blue);color:#fff;border-top-right-radius:4px}
+.chat-msg.own .msg-meta{flex-direction:row-reverse}
+.msg-img{width:100%;max-width:260px;border-radius:12px;margin-top:6px;cursor:zoom-in;border:1px solid var(--border)}
+.msg-reactions{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
+.reaction{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:100px;font-size:11px;background:var(--bg);border:1px solid var(--border);cursor:pointer;transition:all .15s}
+.reaction:hover{border-color:var(--blue-mid);background:var(--blue-light)}
+.reaction.mine{background:var(--blue-light);border-color:var(--blue-mid)}
+.msg-reply-preview{background:var(--bg);border-left:3px solid var(--blue);border-radius:6px;padding:6px 10px;margin-bottom:5px;font-size:11px;color:var(--text-soft)}
+.msg-reply-name{font-weight:700;color:var(--blue-dark);margin-bottom:1px}
+.chat-input-area{padding:14px 16px;border-top:1px solid var(--border);background:var(--white);flex-shrink:0}
+.chat-reply-preview{background:var(--blue-light);border-left:3px solid var(--blue);border-radius:8px;padding:7px 12px;margin-bottom:8px;display:none;align-items:center;gap:8px}
+.chat-reply-preview.show{display:flex}
+.crp-text{font-size:12px;color:var(--blue-dark);flex:1}
+.crp-close{font-size:14px;color:var(--text-soft);cursor:pointer;background:none;border:none}
+.chat-input-row{display:flex;gap:8px;align-items:flex-end}
+.chat-input{flex:1;padding:10px 14px;border:1.5px solid var(--border);border-radius:14px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);background:var(--bg);outline:none;resize:none;max-height:120px;overflow-y:auto;transition:all .2s;line-height:1.5}
+.chat-input:focus{border-color:var(--blue);background:var(--white);box-shadow:0 0 0 3px var(--blue-light)}
+.chat-input::placeholder{color:var(--text-soft)}
+.chat-toolbar{display:flex;gap:4px;align-items:center}
+.chat-tool-btn{width:36px;height:36px;border-radius:10px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-soft);transition:all .15s;font-size:16px}
+.chat-tool-btn:hover{background:var(--blue-light);color:var(--blue)}
+.chat-send{width:40px;height:40px;border-radius:12px;background:var(--blue);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;flex-shrink:0}
+.chat-send:hover{background:var(--blue-dark)}
+.chat-send svg{width:16px;height:16px;stroke:#fff;stroke-width:2.5;fill:none}
+.chat-sidebar{width:240px;border-left:1px solid var(--border);overflow-y:auto;background:var(--white)}
+.cs-section{padding:16px 16px 8px}
+.cs-title{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-soft);margin-bottom:12px}
+.cs-member-row{display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;transition:all .15s}
+.cs-member-row:hover .cs-member-name{color:var(--blue)}
+.cs-member-av{width:30px;height:30px;border-radius:50%;font-size:10px;font-weight:600;color:#fff;display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0}
+.cs-online-dot{position:absolute;bottom:0;right:0;width:7px;height:7px;border-radius:50%;background:var(--green);border:2px solid var(--white)}
+.cs-member-name{font-size:12px;font-weight:500;color:var(--text-mid)}
+.cs-member-role{font-size:10px;color:var(--text-soft)}
+.cs-role-tag{margin-left:auto;font-size:9px;font-weight:700;padding:2px 6px;border-radius:100px;background:var(--amber-light);color:var(--amber)}
+
+/* ══════════
+  PANEL: MENTORS
+══════════ */
+.mentors-content{padding:24px;max-width:900px}
+.mentors-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-bottom:24px}
+.mentor-card{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:22px;transition:all .2s;cursor:pointer}
+.mentor-card:hover{border-color:var(--blue-mid);box-shadow:0 8px 24px rgba(65,137,221,.1);transform:translateY(-2px)}
+.mc-top{display:flex;gap:14px;align-items:flex-start;margin-bottom:14px}
+.mc-av{width:52px;height:52px;border-radius:50%;font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative}
+.mc-online{position:absolute;bottom:1px;right:1px;width:12px;height:12px;border-radius:50%;background:var(--green);border:2px solid var(--white)}
+.mc-name{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:700;color:var(--text);margin-bottom:1px}
+.mc-role{font-size:12px;color:var(--blue);font-weight:600;margin-bottom:3px}
+.mc-company{font-size:11px;color:var(--text-soft)}
+.mc-bio{font-size:12px;color:var(--text-mid);line-height:1.6;margin-bottom:12px}
+.mc-chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+.mc-chip{padding:3px 9px;background:var(--blue-light);color:var(--blue-dark);border-radius:100px;font-size:10px;font-weight:600}
+.mc-stats{display:flex;gap:14px;margin-bottom:14px}
+.mc-stat{font-size:11px;color:var(--text-soft)}
+.mc-stat strong{color:var(--text-mid);font-weight:700}
+.mc-actions{display:flex;gap:8px}
+.mc-btn{flex:1;padding:9px;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+.mc-btn-primary{background:var(--blue);color:#fff;border:none}
+.mc-btn-primary:hover{background:var(--blue-dark)}
+.mc-btn-secondary{background:transparent;color:var(--blue);border:1.5px solid var(--blue-mid)}
+.mc-btn-secondary:hover{background:var(--blue-light)}
+
+/* ══════════
+  PANEL: ROADMAP
+══════════ */
+.roadmap-content{padding:24px;display:grid;grid-template-columns:1fr 260px;gap:20px;align-items:start;max-width:1000px}
+.phase-block{margin-bottom:28px}
+.phase-label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-soft);margin-bottom:12px;padding-left:42px}
+.rm-node{display:flex;gap:0;margin-bottom:8px;cursor:pointer}
+.rm-node-left{display:flex;flex-direction:column;align-items:center;width:42px;flex-shrink:0}
+.rm-circle{width:30px;height:30px;border-radius:50%;border:2px solid var(--border);background:var(--white);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text-soft);transition:all .2s;z-index:1}
+.rm-circle.done{background:var(--blue);border-color:var(--blue);color:#fff}
+.rm-circle.done svg{width:12px;height:12px;stroke:#fff;stroke-width:2.5;fill:none}
+.rm-circle.active-node{border-color:var(--blue);color:var(--blue);box-shadow:0 0 0 3px var(--blue-light)}
+.rm-line{width:2px;flex:1;min-height:16px;background:var(--border)}
+.rm-line.done{background:var(--blue-mid)}
+.rm-body{flex:1;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-left:6px;transition:all .2s}
+.rm-node:hover .rm-body{border-color:var(--blue-mid);box-shadow:0 3px 12px rgba(65,137,221,.08)}
+.rm-body.done{border-color:var(--blue-mid);background:var(--blue-light)}
+.rm-title{font-weight:600;font-size:13px;color:var(--text);display:flex;align-items:center;gap:8px;margin-bottom:3px}
+.rm-sub{font-size:11px;color:var(--text-soft);line-height:1.5}
+.rm-tags{display:flex;gap:4px;margin-top:7px;flex-wrap:wrap}
+.rm-tag{padding:2px 7px;background:var(--bg);border:1px solid var(--border);border-radius:100px;font-size:9px;font-weight:500;color:var(--text-soft)}
+.rm-dur{margin-left:auto;font-size:10px;color:var(--text-soft);flex-shrink:0;white-space:nowrap}
+.rm-sidebar-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:14px}
+.rm-sc-title{font-weight:700;font-size:12px;color:var(--text);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.prog-big{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:700;color:var(--blue)}
+.prog-bar{height:5px;background:var(--border);border-radius:100px;overflow:hidden;margin:8px 0}
+.prog-fill{height:100%;background:var(--blue);border-radius:100px;transition:width .5s}
+.prog-lbl{font-size:11px;color:var(--text-soft)}
+.resource-row{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:all .15s}
+.resource-row:last-child{border-bottom:none}
+.resource-row:hover .res-name{color:var(--blue)}
+.res-icon{width:28px;height:28px;border-radius:7px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.res-name{font-size:12px;font-weight:600;color:var(--text-mid)}
+.res-type{font-size:10px;color:var(--text-soft)}
+.res-free{margin-left:auto;font-size:9px;font-weight:700;color:var(--green);background:var(--green-light);padding:2px 6px;border-radius:100px}
+
+/* ══════════
+  PANEL: LEADERBOARD
+══════════ */
+.lb-content{padding:24px;max-width:700px}
+.lb-podium{display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:10px;margin-bottom:28px;align-items:end}
+.lb-podium-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:18px 14px;text-align:center;position:relative}
+.lb-podium-card.first{background:linear-gradient(135deg,var(--blue-light),#fff);border-color:var(--blue-mid);padding-bottom:22px}
+.lb-crown{font-size:20px;margin-bottom:6px}
+.lb-pos-av{width:48px;height:48px;border-radius:50%;margin:0 auto 10px;font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center}
+.lb-pos-name{font-weight:700;font-size:13px;color:var(--text);margin-bottom:2px}
+.lb-pos-loc{font-size:10px;color:var(--text-soft);margin-bottom:6px}
+.lb-pos-score{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:700;color:var(--blue)}
+.lb-pos-num{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;color:var(--text-soft);letter-spacing:.5px}
+.lb-row{display:flex;align-items:center;gap:12px;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:13px 16px;margin-bottom:8px;transition:all .2s}
+.lb-row:hover{border-color:var(--blue-mid);box-shadow:0 3px 10px rgba(65,137,221,.07)}
+.lb-rank{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:700;color:var(--text-soft);min-width:28px;text-align:center}
+.lb-av{width:36px;height:36px;border-radius:50%;font-size:12px;font-weight:600;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.lb-info{flex:1}
+.lb-name{font-weight:600;font-size:13px;color:var(--text);margin-bottom:1px}
+.lb-loc{font-size:11px;color:var(--text-soft)}
+.lb-score{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:700;color:var(--blue)}
+.lb-change{font-size:10px;font-weight:700;color:var(--green);margin-left:4px}
+
+/* ══════════
+  PANEL: EVENTS
+══════════ */
+.events-content{padding:24px;max-width:800px}
+.ev-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px;margin-bottom:14px;display:flex;gap:18px;cursor:pointer;transition:all .2s}
+.ev-card:hover{border-color:var(--blue-mid);box-shadow:0 6px 20px rgba(65,137,221,.09);transform:translateY(-1px)}
+.ev-date-block{width:56px;height:56px;background:var(--blue-light);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;border:1px solid var(--blue-mid)}
+.ev-day{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:700;color:var(--blue);line-height:1}
+.ev-month{font-size:9px;font-weight:700;color:var(--blue-muted);text-transform:uppercase;letter-spacing:.5px}
+.ev-info{flex:1}
+.ev-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px}
+.ev-desc{font-size:13px;color:var(--text-mid);line-height:1.55;margin-bottom:10px}
+.ev-meta{display:flex;gap:14px;flex-wrap:wrap}
+.ev-meta-item{font-size:11px;color:var(--text-soft);display:flex;align-items:center;gap:4px}
+.ev-type-pill{padding:3px 10px;border-radius:100px;font-size:10px;font-weight:700}
+.ev-type-live{background:var(--rose-light);color:var(--rose)}
+.ev-type-online{background:var(--blue-light);color:var(--blue-dark)}
+.ev-type-challenge{background:var(--amber-light);color:var(--amber)}
+.ev-rsvp{padding:9px 20px;background:var(--blue);color:#fff;border:none;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;align-self:center;flex-shrink:0;transition:all .2s}
+.ev-rsvp:hover{background:var(--blue-dark)}
+.ev-rsvp.rsvped{background:var(--green-light);color:var(--green);border:1px solid #bbf7d0}
+
+/* ── LESSON MODAL ── */
+.lesson-overlay{position:fixed;inset:0;background:rgba(12,18,32,.5);z-index:200;display:none;align-items:flex-start;justify-content:center;padding:40px 20px;backdrop-filter:blur(3px);overflow-y:auto}
+.lesson-overlay.open{display:flex}
+.lesson-box{background:var(--white);border-radius:var(--radius-lg);width:100%;max-width:660px}
+.lb-hdr{padding:22px 26px 0;display:flex;align-items:flex-start;justify-content:space-between}
+.lb-hdr-title{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:var(--text);line-height:1.2}
+.lb-close{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:var(--text-soft);font-family:'DM Sans',sans-serif}
+.lb-close:hover{background:var(--blue-light);color:var(--blue)}
+.lb-content-body{padding:18px 26px;display:flex;flex-direction:column;gap:14px}
+.lb-lang-label{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-soft);margin-bottom:5px}
+.lb-en-text{font-size:13px;color:var(--text-mid);line-height:1.7}
+.lb-so-text{font-size:13px;color:var(--blue-dark);line-height:1.7;background:var(--blue-light);padding:12px 14px;border-radius:10px;border-left:3px solid var(--blue)}
+.lb-code{background:#0c1220;border-radius:10px;padding:14px 16px;font-family:monospace;font-size:12px;color:#a8d8a8;line-height:1.7;overflow-x:auto}
+.lb-footer{display:flex;gap:8px;padding:14px 26px 22px;border-top:1px solid var(--border)}
+.lb-done-btn{flex:1;padding:10px;background:var(--blue);color:#fff;border:none;border-radius:100px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+.lb-done-btn:hover{background:var(--blue-dark)}
+.lb-ai-btn{flex:1;padding:10px;background:transparent;color:var(--blue);border:1.5px solid var(--blue-mid);border-radius:100px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+.lb-ai-btn:hover{background:var(--blue-light)}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--text);color:#fff;padding:10px 22px;border-radius:100px;font-size:13px;font-weight:500;z-index:999;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .hub-sidebar{display:none}
+  .roadmap-content{grid-template-columns:1fr}
+  .ov-two{grid-template-columns:1fr}
+  .ov-stats-row{grid-template-columns:1fr 1fr}
+  .chat-sidebar{display:none}
+}
+@media(max-width:600px){
+  nav{padding:0 14px}
+  .nav-pills{display:none}
+  .fields-grid{grid-template-columns:1fr 1fr}
+  .picker-page{padding:28px 14px}
+  .ov-stats-row{grid-template-columns:1fr 1fr}
+  .mentors-grid{grid-template-columns:1fr}
+  .lb-podium{grid-template-columns:1fr 1.1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- LESSON MODAL -->
+<div class="lesson-overlay" id="lessonOverlay">
+  <div class="lesson-box">
+    <div class="lb-hdr">
+      <div class="lb-hdr-title" id="lmTitle">Lesson</div>
+      <button class="lb-close" onclick="closeLesson()">✕</button>
+    </div>
+    <div class="lb-content-body">
+      <div><div class="lb-lang-label">🇬🇧 English</div><div class="lb-en-text" id="lmEn"></div></div>
+      <div><div class="lb-lang-label">🇸🇴 Af Soomaali</div><div class="lb-so-text" id="lmSo"></div></div>
+      <div><div class="lb-lang-label">Code Example</div><div class="lb-code" id="lmCode"></div></div>
+    </div>
+    <div class="lb-footer">
+      <button class="lb-done-btn" id="lmDoneBtn" onclick="markDone()">✓ Mark as Complete</button>
+      <button class="lb-ai-btn" onclick="closeLesson();showToast('Opening AI chat with lesson context...')">Ask Hage AI →</button>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo" onclick="goHome()">Hage Hub</div>
+  <div class="nav-pills">
+    <button class="nav-pill" onclick="showToast('Going to Ask...')">Ask</button>
+    <button class="nav-pill active">Learn</button>
+    <button class="nav-pill" onclick="showToast('Going to AI...')">AI</button>
+    <button class="nav-pill" onclick="showToast('Going to Connect...')">Connect</button>
+    <button class="nav-pill" onclick="showToast('Going to Stories...')">Stories</button>
+  </div>
+  <div class="nav-right">
+    <div class="nav-notif"><span>🔔</span><div class="notif-badge"></div></div>
+    <div class="nav-av" id="navAv">S<img id="navAvImg" src="" style="display:none"></div>
+  </div>
+</nav>
+
+<!-- SCREEN 1: FIELD PICKER -->
+<div class="screen active" id="screenPicker">
+  <div class="picker-page">
+    <div class="picker-hero">
+      <div class="picker-eyebrow">Hage Hub Learn</div>
+      <div class="picker-title">Pick your field.<br><em>Own it.</em></div>
+      <div class="picker-sub">Each field is a full community — <strong>roadmap, group chat, multiple mentors, events, and a leaderboard</strong> of Somali developers on the same path as you.</div>
+    </div>
+    <div class="joined-banner" id="joinedBanner" style="display:none">
+      <p>Your communities: <strong id="joinedCount">0</strong> joined</p>
+      <div class="joined-chips" id="joinedChips"></div>
+    </div>
+    <div class="search-bar"><input type="text" placeholder="Search fields..." oninput="searchFields(this.value)" id="fieldSearch"></div>
+    <div class="fields-grid" id="fieldsGrid"></div>
+  </div>
+</div>
+
+<!-- SCREEN 2: FIELD HUB -->
+<div class="screen" id="screenHub">
+  <div class="hub-page">
+    <!-- Left sidebar nav -->
+    <div class="hub-sidebar" id="hubSidebar">
+      <div class="hs-top">
+        <button class="hs-back" onclick="goHome()">
+          <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+          All Fields
+        </button>
+        <div class="hs-field-icon" id="hsFieldIcon"></div>
+        <div class="hs-field-name" id="hsFieldName"></div>
+        <div class="hs-members" id="hsMembers"></div>
+      </div>
+      <div class="hs-nav">
+        <div class="hs-section">Navigate</div>
+        <div class="hs-item active" onclick="switchPanel('overview',this)"><div class="hs-item-icon">🏠</div><span>Overview</span></div>
+        <div class="hs-item" onclick="switchPanel('chat',this)"><div class="hs-item-icon">💬</div><span>Group Chat</span><span class="hs-badge" id="chatBadge">3</span></div>
+        <div class="hs-item" onclick="switchPanel('mentors',this)"><div class="hs-item-icon">🧭</div><span>Mentors</span></div>
+        <div class="hs-item" onclick="switchPanel('roadmap',this)"><div class="hs-item-icon">🗺️</div><span>Roadmap</span></div>
+        <div class="hs-item" onclick="switchPanel('leaderboard',this)"><div class="hs-item-icon">🏆</div><span>Leaderboard</span></div>
+        <div class="hs-item" onclick="switchPanel('events',this)"><div class="hs-item-icon">📅</div><span>Events</span><span class="hs-badge green">2</span></div>
+      </div>
+      <div class="hs-online-section" id="hsOnlineSection"></div>
+    </div>
+
+    <!-- Panels -->
+    <div class="hub-main">
+      <div class="hub-panel active" id="panelOverview"></div>
+      <div class="hub-panel" id="panelChat">
+        <div class="chat-panel">
+          <div class="chat-main">
+            <div class="chat-header" id="chatHeader"></div>
+            <div class="chat-messages" id="chatMessages"></div>
+            <div class="chat-input-area">
+              <div class="chat-reply-preview" id="chatReplyPreview">
+                <div class="crp-text" id="crpText"></div>
+                <button class="crp-close" onclick="cancelReply()">✕</button>
+              </div>
+              <div class="chat-input-row">
+                <div class="chat-toolbar">
+                  <button class="chat-tool-btn" onclick="document.getElementById('chatImgInp').click()" title="Image">🖼️</button>
+                  <input type="file" id="chatImgInp" accept="image/*" style="display:none" onchange="handleChatImage(this)">
+                  <button class="chat-tool-btn" title="Emoji" onclick="insertEmoji()">😊</button>
+                </div>
+                <textarea class="chat-input" id="chatInput" placeholder="Message the community..." rows="1"
+                  onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"
+                  oninput="autoResize(this)"></textarea>
+                <button class="chat-send" onclick="sendMessage()">
+                  <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="chat-sidebar" id="chatSidebar"></div>
+        </div>
+      </div>
+      <div class="hub-panel" id="panelMentors"></div>
+      <div class="hub-panel" id="panelRoadmap"></div>
+      <div class="hub-panel" id="panelLeaderboard"></div>
+      <div class="hub-panel" id="panelEvents"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── FIELD DATA ──
+const FIELDS = [
+  { id:'webdev', name:'Web Development', emoji:'🌐', color:'#4189DD', bg:'#eaf2fd',
+    desc:'HTML, CSS, JavaScript, React, Node.js — build anything on the web.',
+    chips:['Frontend','Backend','Full-Stack'], members:247, lessons:18,
+    mentors:[
+      {init:'YI',name:'Yusuf Ibraahim',role:'Full-Stack Eng.',company:'Shopify',bio:'6 years building web apps. From Hargeisa to Shopify. I know the full journey.',chips:['React','Node.js','TypeScript'],ans:127,students:23,rating:4.9,online:true,color:'#4189DD'},
+      {init:'AA',name:'Abdi Axmed',role:'Senior SWE',company:'Google',bio:'Building web infrastructure at Google. Focused on performance and scalability.',chips:['Next.js','Go','System Design'],ans:89,students:18,rating:4.8,online:false,color:'#1a5db5'},
+      {init:'HM',name:'Hodan Muuse',role:'Frontend Lead',company:'Vercel',bio:'Frontend specialist, open source contributor, CSS wizard.',chips:['CSS','React','Design Systems'],ans:64,students:12,rating:4.9,online:true,color:'#6aaae8'},
+    ],
+    phases:[
+      {label:'Phase 1 — Foundations', nodes:[{t:'HTML & CSS Basics',s:'Structure, styling, layouts',tags:['HTML','CSS'],dur:'2w'},{t:'JavaScript Fundamentals',s:'Variables, functions, DOM, events',tags:['JS'],dur:'3w'},{t:'Responsive Design',s:'Flexbox, Grid, mobile-first',tags:['CSS'],dur:'1w'}]},
+      {label:'Phase 2 — Frameworks', nodes:[{t:'React Fundamentals',s:'Components, state, hooks',tags:['React'],dur:'3w'},{t:'Node.js & APIs',s:'Express, REST, middleware',tags:['Node'],dur:'2w'},{t:'Databases',s:'SQL, PostgreSQL, Supabase',tags:['SQL'],dur:'2w'}]},
+      {label:'Phase 3 — Professional', nodes:[{t:'TypeScript',s:'Types, interfaces, generics',tags:['TS'],dur:'2w'},{t:'Testing & CI/CD',s:'Jest, GitHub Actions',tags:['Test'],dur:'1w'},{t:'Capstone Project',s:'Build & deploy full-stack app',tags:['Project'],dur:'3w'}]},
+    ],
+    resources:[{icon:'📺',name:'The Odin Project',type:'Course',free:true},{icon:'📺',name:'freeCodeCamp',type:'Course',free:true},{icon:'📖',name:'MDN Web Docs',type:'Docs',free:true},{icon:'🎥',name:'Fireship',type:'YouTube',free:true}],
+    leaderboard:[
+      {init:'FA',name:'Faadumo A.',loc:'Mogadishu',score:1240,change:'+12',color:'#4189DD'},
+      {init:'MH',name:'Mohamed H.',loc:'Minneapolis',score:1180,change:'+8',color:'#1a5db5'},
+      {init:'HA',name:'Halimo A.',loc:'London',score:960,change:'+24',color:'#0f3d82'},
+      {init:'YN',name:'Yusuf N.',loc:'Hargeisa',score:840,change:'+5',color:'#6aaae8'},
+      {init:'OM',name:'Omar M.',loc:'Nairobi',score:720,change:'+18',color:'#4189DD'},
+      {init:'SA',name:'Sagal A.',loc:'Toronto',score:650,change:'+3',color:'#1a5db5'},
+    ],
+    events:[
+      {day:'12',month:'Apr',title:'React Hooks Deep Dive',desc:'Live session with Yusuf covering useEffect, useCallback, and custom hooks. Bring your questions!',time:'7pm EAT',host:'Yusuf Ibraahim',attendees:34,type:'online'},
+      {day:'19',month:'Apr',title:'Web Dev Hackathon — Somalia Edition',desc:'48-hour hackathon. Build something that solves a real problem for Somali people. Prizes for top 3.',time:'Starts Fri 6pm',host:'Hage Hub',attendees:67,type:'challenge'},
+      {day:'26',month:'Apr',title:'CSS Art & Animation Night',desc:'Learn to make beautiful CSS animations. Fun, creative, 90 minutes.',time:'8pm EAT',host:'Hodan Muuse',attendees:21,type:'online'},
+    ],
+    chatMessages:[
+      {init:'FA',name:'Faadumo A.',color:'#4189DD',role:'student',msg:'Just deployed my first React app! A Somali recipe tracker 🎉',time:'2:14 PM',reactions:[{emoji:'🎉',count:8,mine:false},{emoji:'🔥',count:5,mine:true}]},
+      {init:'YI',name:'Yusuf Ibraahim',color:'#0f3d82',role:'mentor',msg:"That's amazing Faadumo! Share the link so we can all see it 🙌",time:'2:17 PM',reactions:[]},
+      {init:'MH',name:'Mohamed H.',color:'#1a5db5',role:'student',msg:'Question — should I learn Vue or stick with React?',time:'2:31 PM',reactions:[]},
+      {init:'AA',name:'Abdi Axmed',color:'#0f3d82',role:'mentor',msg:"Stick with React for the job market. Vue is great but React has 10x more job listings globally — and that gap is even bigger if you're applying internationally.",time:'2:35 PM',reactions:[{emoji:'👆',count:12,mine:false}]},
+      {init:'HA',name:'Halimo A.',color:'#6aaae8',role:'student',msg:'Also just finished the TypeScript module. The types feel annoying at first but now I can\'t imagine coding without them',time:'3:02 PM',reactions:[{emoji:'💯',count:6,mine:false}]},
+    ],
+    onlineMembers:[
+      {init:'YI',name:'Yusuf I.',role:'Mentor',color:'#0f3d82'},{init:'FA',name:'Faadumo A.',role:'Student',color:'#4189DD'},{init:'HM',name:'Hodan M.',role:'Mentor',color:'#1a5db5'},{init:'SA',name:'Sagal A.',role:'Student',color:'#6aaae8'},
+    ],
+  },
+  { id:'cyber', name:'Cybersecurity', emoji:'🔒', color:'#e11d48', bg:'#ffe4e6',
+    desc:'Ethical hacking, threat analysis, network security, and defense.',
+    chips:['Blue Team','Red Team','OSCP'], members:184, lessons:16,
+    mentors:[
+      {init:'AM',name:'Amina Hassan',role:'Security Engineer',company:'CrowdStrike',bio:'Red team specialist. 7 years in threat intelligence across Africa and the Gulf.',chips:['Penetration Testing','OSCP','Threat Intel'],ans:89,students:15,rating:4.8,online:true,color:'#e11d48'},
+      {init:'SO',name:'Sagal Osman',role:'SOC Analyst',company:'Microsoft',bio:'Blue team expert. Built SOC infrastructure for three African banks.',chips:['SIEM','Incident Response','CompTIA'],ans:56,students:11,rating:4.7,online:false,color:'#c01038'},
+    ],
+    phases:[
+      {label:'Phase 1 — Foundations', nodes:[{t:'Networking Basics',s:'TCP/IP, DNS, HTTP, firewalls',tags:['Net'],dur:'2w'},{t:'Linux & CLI',s:'Essential for every security role',tags:['Linux'],dur:'2w'},{t:'Security Concepts',s:'CIA triad, encryption, threats',tags:['Sec'],dur:'1w'}]},
+      {label:'Phase 2 — Offensive & Defensive', nodes:[{t:'Ethical Hacking Intro',s:'Recon, scanning, exploitation',tags:['Kali'],dur:'3w'},{t:'Web App Security',s:'OWASP Top 10, SQLi, XSS',tags:['OWASP'],dur:'2w'},{t:'Digital Forensics',s:'Incident response, evidence',tags:['Forensics'],dur:'2w'}]},
+      {label:'Phase 3 — Certifications', nodes:[{t:'CompTIA Security+',s:'Industry baseline certification',tags:['Cert'],dur:'4w'},{t:'CEH / OSCP',s:'Certified ethical hacker path',tags:['CEH'],dur:'8w'}]},
+    ],
+    resources:[{icon:'🧪',name:'TryHackMe',type:'Practice',free:true},{icon:'🧪',name:'HackTheBox',type:'Labs',free:true},{icon:'📖',name:'OWASP Docs',type:'Docs',free:true},{icon:'🎥',name:'NetworkChuck',type:'YouTube',free:true}],
+    leaderboard:[
+      {init:'YN',name:'Yusuf N.',loc:'Hargeisa',score:1380,change:'+22',color:'#e11d48'},
+      {init:'AW',name:'Abdullahi W.',loc:'Kampala',score:1290,change:'+15',color:'#c01038'},
+      {init:'SO',name:'Sagal O.',loc:'Minneapolis',score:1100,change:'+7',color:'#e11d48'},
+      {init:'MH',name:'Mahad H.',loc:'Nairobi',score:890,change:'+31',color:'#c01038'},
+    ],
+    events:[
+      {day:'10',month:'Apr',title:'CTF Challenge — Beginner Friendly',desc:'Capture The Flag competition. 20 challenges across web, crypto, forensics, and reversing.',time:'All day',host:'Amina Hassan',attendees:52,type:'challenge'},
+      {day:'24',month:'Apr',title:'OSCP Study Group',desc:'Weekly group session. This week: buffer overflow exploits.',time:'6pm EAT',host:'Sagal Osman',attendees:18,type:'online'},
+    ],
+    chatMessages:[
+      {init:'YN',name:'Yusuf N.',color:'#e11d48',role:'student',msg:'Just rooted my first HackTheBox machine!! Easy rated but still 😭',time:'11:22 AM',reactions:[{emoji:'🎉',count:14,mine:false}]},
+      {init:'AM',name:'Amina Hassan',color:'#c01038',role:'mentor',msg:"That first root hits different! Now try the Easy machines consistently before moving to Medium. The methodology matters more than the difficulty.",time:'11:45 AM',reactions:[{emoji:'👆',count:9,mine:false}]},
+      {init:'AW',name:'Abdullahi W.',color:'#c01038',role:'student',msg:'Anyone else studying for Security+? Want to form a study group',time:'1:15 PM',reactions:[]},
+    ],
+    onlineMembers:[
+      {init:'AM',name:'Amina H.',role:'Mentor',color:'#e11d48'},{init:'YN',name:'Yusuf N.',role:'Student',color:'#c01038'},
+    ],
+  },
+  { id:'datascience', name:'Data Science', emoji:'📊', color:'#7c3aed', bg:'#ede9fe',
+    desc:'Python, statistics, machine learning, and data visualization.',
+    chips:['Analytics','ML','Python'], members:203, lessons:20,
+    mentors:[
+      {init:'FN',name:'Faadumo Nuur',role:'ML Engineer',company:'Anthropic',bio:'Working on LLMs. Building Somali AI tools. Committed to Somali representation in AI.',chips:['PyTorch','NLP','LLMs','Python'],ans:141,students:27,rating:5.0,online:true,color:'#7c3aed'},
+      {init:'HM',name:'Hodan Mire',role:'Data Scientist',company:'McKinsey',bio:'Applied data science across East Africa. Turning Somali data into impact.',chips:['Python','R','SQL','Tableau'],ans:78,students:14,rating:4.8,online:true,color:'#5b21b6'},
+    ],
+    phases:[
+      {label:'Phase 1 — Foundations', nodes:[{t:'Python for Data',s:'Pandas, NumPy, data manipulation',tags:['Python'],dur:'3w'},{t:'Statistics & Probability',s:'Distributions, hypothesis testing',tags:['Stats'],dur:'2w'},{t:'Data Visualization',s:'Matplotlib, Seaborn, Plotly',tags:['Viz'],dur:'1w'}]},
+      {label:'Phase 2 — Machine Learning', nodes:[{t:'Supervised Learning',s:'Regression, classification, trees',tags:['ML'],dur:'3w'},{t:'Unsupervised Learning',s:'Clustering, PCA, anomaly detection',tags:['ML'],dur:'2w'},{t:'Deep Learning Basics',s:'Neural networks, TensorFlow intro',tags:['DL'],dur:'3w'}]},
+      {label:'Phase 3 — Applied', nodes:[{t:'SQL for Data Science',s:'Advanced queries, window functions',tags:['SQL'],dur:'2w'},{t:'Model Deployment',s:'FastAPI, Streamlit, Hugging Face',tags:['Deploy'],dur:'2w'},{t:'Somali Dataset Project',s:'End-to-end with real Somali data',tags:['Project'],dur:'4w'}]},
+    ],
+    resources:[{icon:'📺',name:'Kaggle Learn',type:'Course',free:true},{icon:'📖',name:'fast.ai',type:'Course',free:true},{icon:'🎥',name:'StatQuest',type:'YouTube',free:true},{icon:'📖',name:'Python DS Handbook',type:'Book',free:true}],
+    leaderboard:[
+      {init:'HM',name:'Hodan M.',loc:'Doha',score:1560,change:'+34',color:'#7c3aed'},
+      {init:'AA',name:'Abdi A.',loc:'SF',score:1420,change:'+12',color:'#5b21b6'},
+      {init:'FN',name:'Faadumo N.',loc:'Seattle',score:1380,change:'+8',color:'#7c3aed'},
+      {init:'YI',name:'Yusuf I.',loc:'Toronto',score:1100,change:'+19',color:'#5b21b6'},
+      {init:'SO',name:'Sagal O.',loc:'Minneapolis',score:980,change:'+27',color:'#7c3aed'},
+    ],
+    events:[
+      {day:'15',month:'Apr',title:'Kaggle Competition Kickoff',desc:'Team up for the monthly Kaggle competition. Faadumo will guide us through the EDA phase live.',time:'5pm EAT',host:'Faadumo Nuur',attendees:41,type:'online'},
+      {day:'22',month:'Apr',title:'Somali NLP Dataset Workshop',desc:'Help build the first large-scale Somali language dataset for ML. This is historically significant work.',time:'3pm EAT',host:'Hodan Mire',attendees:29,type:'challenge'},
+    ],
+    chatMessages:[
+      {init:'HM',name:'Hodan M.',color:'#7c3aed',role:'student',msg:'I just analyzed Mogadishu population density using satellite data + Python. The patterns are fascinating. Sharing the notebook next week 🌍',time:'9:14 AM',reactions:[{emoji:'🌍',count:18,mine:false},{emoji:'🔥',count:11,mine:false}]},
+      {init:'FN',name:'Faadumo N.',color:'#5b21b6',role:'mentor',msg:"Hodan that's incredible! Real Somali data is so rare in ML. Please share the methodology too — this could inspire others to do the same.",time:'9:31 AM',reactions:[{emoji:'💡',count:8,mine:false}]},
+      {init:'AA',name:'Abdi A.',color:'#7c3aed',role:'student',msg:'Tip: before any ML course, read "The Art of Statistics" by Spiegelhalter. Changed everything for me.',time:'10:05 AM',reactions:[{emoji:'📖',count:15,mine:true}]},
+    ],
+    onlineMembers:[
+      {init:'FN',name:'Faadumo N.',role:'Mentor',color:'#5b21b6'},{init:'HM',name:'Hodan M.',role:'Student',color:'#7c3aed'},{init:'AA',name:'Abdi A.',role:'Student',color:'#5b21b6'},
+    ],
+  },
+  { id:'ai', name:'AI & Machine Learning', emoji:'🤖', color:'#d97706', bg:'#fef3c7',
+    desc:'LLMs, neural networks, NLP, and building AI-powered products.',
+    chips:['LLMs','NLP','PyTorch'], members:312, lessons:22,
+    mentors:[
+      {init:'FN',name:'Faadumo Nuur',role:'ML Engineer',company:'Anthropic',bio:'I train large language models. Somali AI is my mission — the language needs more representation.',chips:['PyTorch','LLMs','NLP','Somali AI'],ans:141,students:27,rating:5.0,online:true,color:'#d97706'},
+      {init:'AH',name:'Ahmed Hassan',role:'AI Research Eng.',company:'DeepMind',bio:'Research engineer. Published in NeurIPS. Helping Somali students get into AI research.',chips:['Research','Transformers','Math'],ans:67,students:9,rating:4.9,online:false,color:'#b45309'},
+    ],
+    phases:[
+      {label:'Phase 1 — ML Foundations', nodes:[{t:'Math for ML',s:'Linear algebra, calculus, probability',tags:['Math'],dur:'3w'},{t:'Python & PyTorch',s:'Tensors, autograd, training loops',tags:['PyTorch'],dur:'3w'},{t:'Classical ML',s:'Regression, SVM, ensemble methods',tags:['ML'],dur:'2w'}]},
+      {label:'Phase 2 — Deep Learning & LLMs', nodes:[{t:'Neural Networks',s:'CNNs, RNNs, transformers',tags:['DL'],dur:'4w'},{t:'Working with LLMs',s:'Prompting, fine-tuning, RAG',tags:['LLM'],dur:'3w'},{t:'Building AI Products',s:'LangChain, APIs, deployment',tags:['API'],dur:'3w'}]},
+      {label:'Phase 3 — Specialization', nodes:[{t:'NLP & Somali Language AI',s:'Build tools for underrepresented languages',tags:['NLP','Somali'],dur:'ongoing'},{t:'AI Research Fundamentals',s:'Reading papers, reproducing results',tags:['Research'],dur:'ongoing'}]},
+    ],
+    resources:[{icon:'📺',name:'fast.ai Practical DL',type:'Course',free:true},{icon:'🎥',name:'Andrej Karpathy',type:'YouTube',free:true},{icon:'📖',name:'Hugging Face',type:'Course',free:true},{icon:'🧪',name:'Kaggle',type:'Practice',free:true}],
+    leaderboard:[
+      {init:'HM',name:'Hodan M.',loc:'Doha',score:1890,change:'+41',color:'#d97706'},
+      {init:'FN',name:'Faadumo N.',loc:'Seattle',score:1740,change:'+18',color:'#b45309'},
+      {init:'AA',name:'Abdi A.',loc:'SF',score:1520,change:'+9',color:'#d97706'},
+    ],
+    events:[
+      {day:'8',month:'Apr',title:'Build a Somali Chatbot',desc:'Live workshop: fine-tune a small LLM on Somali text using free Google Colab. No GPU needed.',time:'4pm EAT',host:'Faadumo Nuur',attendees:89,type:'online'},
+      {day:'18',month:'Apr',title:'AI Paper Reading Club',desc:'This week: Attention Is All You Need. Ahmed will break it down in plain English.',time:'7pm EAT',host:'Ahmed Hassan',attendees:44,type:'online'},
+    ],
+    chatMessages:[
+      {init:'HM',name:'Hodan M.',color:'#d97706',role:'student',msg:'I fine-tuned a small LLM on Somali text and it is generating coherent Somali sentences. Sharing the dataset next week. Somali AI is happening!! 🇸🇴',time:'8:45 AM',reactions:[{emoji:'🇸🇴',count:34,mine:false},{emoji:'🚀',count:21,mine:true}]},
+      {init:'FN',name:'Faadumo N.',color:'#b45309',role:'mentor',msg:"This is genuinely historic Hodan. The Somali language has almost zero ML representation. What you're building matters far beyond this community.",time:'9:01 AM',reactions:[{emoji:'💙',count:28,mine:false}]},
+      {init:'AA',name:'Abdi A.',color:'#d97706',role:'student',msg:'For anyone scared of the math — watch 3Blue1Brown Essence of Linear Algebra first. All 15 videos. Then fast.ai. The fear disappears.',time:'10:30 AM',reactions:[{emoji:'💯',count:19,mine:false}]},
+    ],
+    onlineMembers:[
+      {init:'FN',name:'Faadumo N.',role:'Mentor',color:'#b45309'},{init:'HM',name:'Hodan M.',role:'Student',color:'#d97706'},
+    ],
+  },
+  { id:'networking', name:'Networking', emoji:'🌐', color:'#0d9488', bg:'#ccfbf1',
+    desc:'TCP/IP, routing, switching, cloud networking, and infrastructure.',
+    chips:['CCNA','Cloud','Infrastructure'], members:156, lessons:14,
+    mentors:[
+      {init:'AW',name:'Abdullahi Warsame',role:'Network Engineer',company:'Safaricom',bio:'9 years designing network infrastructure across East Africa. Building the next generation.',chips:['CCNA','CCNP','AWS','Cisco'],ans:93,students:19,rating:4.8,online:true,color:'#0d9488'},
+    ],
+    phases:[
+      {label:'Phase 1 — Foundations', nodes:[{t:'OSI & TCP/IP Models',s:'How data travels across networks',tags:['OSI'],dur:'1w'},{t:'IP Addressing',s:'IPv4, IPv6, subnetting, CIDR',tags:['IP'],dur:'2w'},{t:'Routing & Switching',s:'VLANs, STP, OSPF, BGP',tags:['Cisco'],dur:'3w'}]},
+      {label:'Phase 2 — Cloud & Security', nodes:[{t:'Cloud Networking',s:'AWS VPC, Azure, load balancers',tags:['AWS'],dur:'2w'},{t:'Network Security',s:'Firewalls, VPNs, IDS/IPS',tags:['Sec'],dur:'2w'},{t:'CCNA Certification',s:'Cisco certified network associate',tags:['CCNA'],dur:'6w'}]},
+    ],
+    resources:[{icon:'📖',name:'Cisco NetAcad',type:'Course',free:true},{icon:'🎥',name:'Professor Messer',type:'YouTube',free:true},{icon:'🧪',name:'Packet Tracer',type:'Labs',free:true}],
+    leaderboard:[{init:'AW',name:'Abdullahi W.',loc:'Kampala',score:1420,change:'+28',color:'#0d9488'},{init:'MH',name:'Mahad H.',loc:'Nairobi',score:1180,change:'+14',color:'#0f766e'}],
+    events:[{day:'11',month:'Apr',title:'CCNA Study Group',desc:'Week 4 of our CCNA prep series. This session: BGP and route redistribution.',time:'6pm EAT',host:'Abdullahi Warsame',attendees:23,type:'online'}],
+    chatMessages:[
+      {init:'AW',name:'Abdullahi W.',color:'#0d9488',role:'student',msg:'Study group for CCNA starting next week — Tuesday and Thursday 6pm EAT. Reply here if you want in!',time:'3:00 PM',reactions:[{emoji:'✋',count:11,mine:false}]},
+      {init:'AW',name:'Abdullahi Warsame',color:'#0f766e',role:'mentor',msg:'Great initiative! I will sit in on the first session and answer questions. Pro tip: use Packet Tracer for every lab — do not just read the theory.',time:'3:15 PM',reactions:[{emoji:'🙏',count:8,mine:false}]},
+    ],
+    onlineMembers:[{init:'AW',name:'Abdullahi W.',role:'Mentor',color:'#0d9488'}],
+  },
+  { id:'mobile', name:'Mobile Dev', emoji:'📱', color:'#16a34a', bg:'#dcfce7',
+    desc:'Build iOS and Android apps with React Native or Flutter.',
+    chips:['iOS','Android','React Native'], members:178, lessons:15,
+    mentors:[
+      {init:'OM',name:'Omar Mahad',role:'Senior iOS Eng.',company:'Spotify',bio:'Built 12 apps shipped to App Store. React Native specialist.',chips:['React Native','iOS','Swift','Expo'],ans:76,students:12,rating:4.7,online:false,color:'#16a34a'},
+    ],
+    phases:[
+      {label:'Phase 1 — Basics', nodes:[{t:'React Native Setup',s:'Expo, navigation, components',tags:['RN'],dur:'2w'},{t:'State & Data',s:'Context, Redux, async storage',tags:['State'],dur:'2w'},{t:'Native Features',s:'Camera, GPS, notifications',tags:['Native'],dur:'2w'}]},
+      {label:'Phase 2 — Shipping', nodes:[{t:'Backend Integration',s:'REST APIs, Supabase, Firebase',tags:['API'],dur:'2w'},{t:'Performance',s:'Optimization, offline, caching',tags:['Perf'],dur:'1w'},{t:'App Store Deploy',s:'iOS + Google Play submission',tags:['Deploy'],dur:'2w'}]},
+    ],
+    resources:[{icon:'📖',name:'React Native Docs',type:'Docs',free:true},{icon:'📺',name:'Expo Docs',type:'Docs',free:true},{icon:'🎥',name:'William Candillon',type:'YouTube',free:true}],
+    leaderboard:[{init:'SO',name:'Sagal O.',loc:'Minneapolis',score:1340,change:'+45',color:'#16a34a'},{init:'OM',name:'Omar M.',loc:'Dublin',score:1120,change:'+11',color:'#15803d'}],
+    events:[{day:'20',month:'Apr',title:'Ship Your First App',desc:'End-to-end workshop: build and submit a simple app to both stores in one day.',time:'10am EAT',host:'Omar Mahad',attendees:38,type:'challenge'}],
+    chatMessages:[
+      {init:'SO',name:'Sagal O.',color:'#16a34a',role:'student',msg:'Released my first app on Play Store! Somali-English dictionary. 200 downloads in the first week 🙌🙌🙌',time:'4:00 PM',reactions:[{emoji:'🎉',count:32,mine:false},{emoji:'🔥',count:18,mine:false}]},
+    ],
+    onlineMembers:[{init:'SO',name:'Sagal O.',role:'Student',color:'#16a34a'}],
+  },
+  { id:'devops', name:'DevOps & Cloud', emoji:'⚙️', color:'#ea580c', bg:'#ffedd5',
+    desc:'Docker, Kubernetes, CI/CD, AWS, and cloud infrastructure.',
+    chips:['Docker','Kubernetes','AWS'], members:189, lessons:16,
+    mentors:[
+      {init:'AA',name:'Abdi Axmed',role:'Senior SWE / SRE',company:'Google',bio:"Running Google's SRE practice for EMEA. DevOps + cloud is the future of East Africa tech.",chips:['Kubernetes','AWS','GCP','Terraform','CI/CD'],ans:112,students:21,rating:4.9,online:true,color:'#ea580c'},
+    ],
+    phases:[
+      {label:'Phase 1 — Core Tools', nodes:[{t:'Linux Administration',s:'File system, processes, shell scripting',tags:['Linux'],dur:'2w'},{t:'Docker & Containers',s:'Images, containers, Compose',tags:['Docker'],dur:'2w'},{t:'Git & GitHub',s:'Branching, PRs, workflows',tags:['Git'],dur:'1w'}]},
+      {label:'Phase 2 — Cloud & Orchestration', nodes:[{t:'AWS Fundamentals',s:'EC2, S3, IAM, VPC, Lambda',tags:['AWS'],dur:'3w'},{t:'Kubernetes',s:'Pods, deployments, services',tags:['K8s'],dur:'4w'},{t:'CI/CD Pipelines',s:'GitHub Actions, ArgoCD',tags:['CI/CD'],dur:'2w'}]},
+    ],
+    resources:[{icon:'🎥',name:'TechWorld with Nana',type:'YouTube',free:true},{icon:'🧪',name:'KodeKloud',type:'Labs',free:false},{icon:'📖',name:'AWS Free Tier',type:'Practice',free:true}],
+    leaderboard:[{init:'YI',name:'Yusuf I.',loc:'Toronto',score:1480,change:'+22',color:'#ea580c'},{init:'AA',name:'Abdi A.',loc:'SF',score:1360,change:'+15',color:'#c2410c'}],
+    events:[{day:'13',month:'Apr',title:'Kubernetes Hands-On Lab',desc:'Set up a local K8s cluster and deploy a real app. Abdi will be live to help debug.',time:'7pm EAT',host:'Abdi Axmed',attendees:47,type:'online'}],
+    chatMessages:[
+      {init:'YI',name:'Yusuf I.',color:'#ea580c',role:'student',msg:'Got my AWS Solutions Architect cert yesterday! 6 weeks of studying alongside work. ACloudGuru + practice exams.',time:'9:00 AM',reactions:[{emoji:'🏆',count:24,mine:false},{emoji:'🎉',count:16,mine:true}]},
+      {init:'AA',name:'Abdi Axmed',color:'#c2410c',role:'mentor',msg:"Congratulations Yusuf!! AWS SA is a serious cert. Now target the Professional or a specialty cert. Your salary trajectory just changed.",time:'9:18 AM',reactions:[{emoji:'💪',count:14,mine:false}]},
+    ],
+    onlineMembers:[{init:'AA',name:'Abdi A.',role:'Mentor',color:'#c2410c'},{init:'YI',name:'Yusuf I.',role:'Student',color:'#ea580c'}],
+  },
+  { id:'backend', name:'Backend Dev', emoji:'🗄️', color:'#0ea5e9', bg:'#e0f2fe',
+    desc:'APIs, databases, system design, and server architecture.',
+    chips:['APIs','SQL','System Design'], members:221, lessons:17,
+    mentors:[
+      {init:'HMR',name:'Hodan Mire',role:'Backend Engineer',company:'Stripe',bio:'Building payment infrastructure at Stripe. Backend is the backbone of every product.',chips:['Go','PostgreSQL','Redis','System Design'],ans:98,students:17,rating:4.8,online:true,color:'#0ea5e9'},
+      {init:'AA',name:'Abdi Axmed',role:'Senior SWE',company:'Google',bio:'Distributed systems at scale. I help Somali engineers think in systems.',chips:['Go','gRPC','Kafka','Microservices'],ans:89,students:18,rating:4.9,online:false,color:'#0284c7'},
+    ],
+    phases:[
+      {label:'Phase 1 — API Foundations', nodes:[{t:'HTTP & REST APIs',s:'Methods, status codes, JSON',tags:['HTTP'],dur:'2w'},{t:'Node.js or Python',s:'Express, FastAPI, or Django',tags:['Node'],dur:'3w'},{t:'Databases',s:'PostgreSQL, indexing, optimization',tags:['SQL'],dur:'3w'}]},
+      {label:'Phase 2 — Scaling', nodes:[{t:'Auth & Security',s:'JWT, OAuth, bcrypt, RLS',tags:['Auth'],dur:'2w'},{t:'Caching & Performance',s:'Redis, CDN, query caching',tags:['Redis'],dur:'2w'},{t:'System Design',s:'Load balancing, microservices',tags:['SD'],dur:'4w'}]},
+    ],
+    resources:[{icon:'📖',name:'roadmap.sh/backend',type:'Roadmap',free:true},{icon:'🎥',name:'Fireship',type:'YouTube',free:true},{icon:'📖',name:'PostgreSQL Docs',type:'Docs',free:true}],
+    leaderboard:[{init:'HMR',name:'Hodan M.',loc:'Doha',score:1620,change:'+28',color:'#0ea5e9'},{init:'SO',name:'Sagal O.',loc:'Minneapolis',score:1380,change:'+19',color:'#0284c7'},{init:'AA',name:'Abdi A.',loc:'SF',score:1240,change:'+8',color:'#0ea5e9'}],
+    events:[{day:'16',month:'Apr',title:'System Design Interview Prep',desc:'Walk through classic SD interview questions: URL shortener, Twitter, Uber. Hodan interviews Abdi live.',time:'6pm EAT',host:'Hodan Mire',attendees:61,type:'online'}],
+    chatMessages:[
+      {init:'SO',name:'Sagal O.',color:'#0ea5e9',role:'student',msg:"Spent 3 hours debugging an N+1 query. ONE .include() in the ORM fixed it. Query time: 4s → 40ms. Always check your SQL!!",time:'2:30 PM',reactions:[{emoji:'😭',count:22,mine:false},{emoji:'💡',count:17,mine:false}]},
+      {init:'HMR',name:'Hodan M.',color:'#0284c7',role:'mentor',msg:"Classic lesson Sagal! N+1 issues destroy performance at scale. Use EXPLAIN ANALYZE on every slow query. And use a query profiler in development — catch these before production.",time:'2:48 PM',reactions:[{emoji:'📌',count:13,mine:false}]},
+    ],
+    onlineMembers:[{init:'HMR',name:'Hodan M.',role:'Mentor',color:'#0284c7'},{init:'SO',name:'Sagal O.',role:'Student',color:'#0ea5e9'}],
+  },
+];
+
+// ── STATE ──
+let currentField = null;
+let activePanel = 'overview';
+let joined = JSON.parse(localStorage.getItem('hh_joined')||'[]');
+let completed = JSON.parse(localStorage.getItem('hh_completed')||'{}');
+let chatMessages = {};
+let replyingTo = null;
+let currentLesson = null;
+let userPhoto = localStorage.getItem('hh_photo')||null;
+let userName = localStorage.getItem('hh_name')||'salwa';
+
+// init nav avatar
+const navAvImg = document.getElementById('navAvImg');
+if(userPhoto){navAvImg.src=userPhoto;navAvImg.style.display='block';}
+document.getElementById('navAv').childNodes[0].textContent = userName.substring(0,2).toUpperCase();
+
+// ── FIELD PICKER ──
+function renderPicker(filter='') {
+  const filtered = FIELDS.filter(f=>!filter||f.name.toLowerCase().includes(filter.toLowerCase())||f.desc.toLowerCase().includes(filter.toLowerCase()));
+  const grid = document.getElementById('fieldsGrid');
+  grid.innerHTML = filtered.map(f=>{
+    const total = f.phases.reduce((s,p)=>s+p.nodes.length,0);
+    const done = Object.keys(completed).filter(k=>k.startsWith(f.id+'_')).length;
+    const pct = total>0?Math.round((done/total)*100):0;
+    const isJoined = joined.includes(f.id);
+    return `<div class="field-card" onclick="openField('${f.id}')" style="border-color:${isJoined?f.color+'44':''}">
+      ${isJoined?'<span class="joined-pill">✓ Joined</span>':''}
+      <div class="fc-icon" style="background:${f.bg}">${f.emoji}</div>
+      <div class="fc-name">${f.name}</div>
+      <div class="fc-desc">${f.desc}</div>
+      <div class="fc-stats">
+        <div class="fc-stat">👥 <span>${f.members.toLocaleString()}</span></div>
+        <div class="fc-stat">📚 <span>${total}</span> lessons</div>
+        <div class="fc-stat">🧭 <span>${f.mentors.length}</span> mentors</div>
+      </div>
+      <div class="fc-bar"><div class="fc-bar-fill" style="background:${f.color};width:${pct}%"></div></div>
+      <div class="fc-prog-lbl">${pct>0?pct+'% complete':'Not started'}</div>
+      <button class="fc-join-btn ${isJoined?'joined':''}" onclick="event.stopPropagation();toggleJoin('${f.id}',this)">
+        ${isJoined?'✓ Joined':'+ Join Community'}
+      </button>
+    </div>`;
+  }).join('');
+
+  // joined banner
+  const banner = document.getElementById('joinedBanner');
+  const chips = document.getElementById('joinedChips');
+  if(joined.length>0){
+    banner.style.display='flex';
+    document.getElementById('joinedCount').textContent=joined.length;
+    chips.innerHTML=joined.map(id=>{const f=FIELDS.find(x=>x.id===id);return f?`<span class="joined-chip" onclick="openField('${id}')">${f.emoji} ${f.name}</span>`:''}).join('');
+  } else banner.style.display='none';
+}
+
+function searchFields(val){renderPicker(val);}
+
+function toggleJoin(id, btn) {
+  if(joined.includes(id)){
+    joined=joined.filter(x=>x!==id);
+    btn.textContent='+ Join Community';
+    btn.classList.remove('joined');
+    showToast('Left community');
+  } else {
+    joined.push(id);
+    btn.textContent='✓ Joined';
+    btn.classList.add('joined');
+    showToast('Joined! Welcome to the community 🎉');
+  }
+  localStorage.setItem('hh_joined',JSON.stringify(joined));
+  renderPicker(document.getElementById('fieldSearch').value);
+}
+
+function openField(id){
+  currentField=FIELDS.find(f=>f.id===id);
+  if(!currentField)return;
+  // auto-join on open
+  if(!joined.includes(id)){joined.push(id);localStorage.setItem('hh_joined',JSON.stringify(joined));}
+  document.getElementById('screenPicker').classList.remove('active');
+  document.getElementById('screenHub').classList.add('active');
+  renderHubSidebar();
+  switchPanel('overview', document.querySelector('.hs-item'));
+  window.scrollTo(0,0);
+}
+
+function goHome(){
+  document.getElementById('screenHub').classList.remove('active');
+  document.getElementById('screenPicker').classList.add('active');
+  renderPicker();
+}
+
+// ── HUB SIDEBAR ──
+function renderHubSidebar(){
+  const f=currentField;
+  document.getElementById('hsFieldIcon').textContent=f.emoji;
+  document.getElementById('hsFieldIcon').style.cssText=`background:${f.bg};font-size:20px;width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center`;
+  document.getElementById('hsFieldName').textContent=f.name;
+  document.getElementById('hsMembers').innerHTML=`<strong>${f.members.toLocaleString()}</strong> members`;
+  const onlineHTML=f.onlineMembers.map(m=>`
+    <div class="online-member">
+      <div class="om-av" style="background:${m.color}">${m.init}</div>
+      <div class="om-name">${m.name}</div>
+    </div>`).join('');
+  document.getElementById('hsOnlineSection').innerHTML=`
+    <div class="hs-online-title">Online Now</div>
+    ${onlineHTML}
+    <div style="font-size:11px;color:var(--text-soft);margin-top:8px">${f.onlineMembers.length} online</div>`;
+}
+
+// ── PANEL SWITCH ──
+function switchPanel(name, clickedItem){
+  activePanel=name;
+  document.querySelectorAll('.hub-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.hs-item').forEach(i=>i.classList.remove('active'));
+  document.getElementById('panel'+name.charAt(0).toUpperCase()+name.slice(1)).classList.add('active');
+  if(clickedItem) clickedItem.classList.add('active');
+  const renders={overview:renderOverview,chat:renderChat,mentors:renderMentors,roadmap:renderRoadmap,leaderboard:renderLeaderboard,events:renderEvents};
+  if(renders[name])renders[name]();
+}
+
+// ── OVERVIEW ──
+function renderOverview(){
+  const f=currentField;
+  const total=f.phases.reduce((s,p)=>s+p.nodes.length,0);
+  const done=Object.keys(completed).filter(k=>k.startsWith(f.id+'_')).length;
+  const pct=total>0?Math.round((done/total)*100):0;
+  document.getElementById('panelOverview').innerHTML=`
+  <div class="overview-content">
+    <div class="ov-header" style="border-top:3px solid ${f.color}">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+        <div style="width:56px;height:56px;border-radius:16px;background:${f.bg};display:flex;align-items:center;justify-content:center;font-size:26px">${f.emoji}</div>
+        <div>
+          <div class="ov-title">${f.name}</div>
+          <div class="ov-desc">${f.desc}</div>
+        </div>
+      </div>
+      <div class="ov-chips">${f.chips.map(c=>`<span class="ov-chip">${c}</span>`).join('')}</div>
+    </div>
+    <div class="ov-stats-row">
+      <div class="ov-stat"><div class="ov-stat-val" style="color:${f.color}">${f.members.toLocaleString()}</div><div class="ov-stat-lbl">Members</div></div>
+      <div class="ov-stat"><div class="ov-stat-val" style="color:${f.color}">${f.mentors.length}</div><div class="ov-stat-lbl">Mentors</div></div>
+      <div class="ov-stat"><div class="ov-stat-val" style="color:${f.color}">${total}</div><div class="ov-stat-lbl">Lessons</div></div>
+      <div class="ov-stat"><div class="ov-stat-val" style="color:${f.color}">${pct}%</div><div class="ov-stat-lbl">Your Progress</div></div>
+    </div>
+    <div class="ov-two">
+      <div class="ov-card">
+        <div class="ov-card-title">Mentors in this field</div>
+        ${f.mentors.map(m=>`
+        <div class="mentor-mini" onclick="switchPanel('mentors',null)">
+          <div class="mm-av" style="background:${m.color};width:36px;height:36px;border-radius:50%;font-size:12px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center">${m.init}</div>
+          <div><div class="mm-name">${m.name}</div><div class="mm-role">${m.role} · ${m.company}</div></div>
+          <div class="mm-available" style="background:${m.online?'var(--green)':'var(--border)'}"></div>
+        </div>`).join('')}
+      </div>
+      <div class="ov-card">
+        <div class="ov-card-title">Upcoming Events</div>
+        ${f.events.slice(0,2).map(e=>`
+        <div class="event-item" onclick="switchPanel('events',null)">
+          <div class="event-date"><div class="event-day">${e.day}</div><div class="event-month">${e.month}</div></div>
+          <div><div class="event-title">${e.title}</div><div class="event-meta">${e.time} · ${e.attendees} going</div></div>
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── CHAT ──
+function renderChat(){
+  const f=currentField;
+  const stored=JSON.parse(localStorage.getItem('hh_chat_'+f.id)||'null');
+  const msgs=stored||(chatMessages[f.id]=[...f.chatMessages]);
+  if(!stored)chatMessages[f.id]=[...f.chatMessages];
+
+  document.getElementById('chatHeader').innerHTML=`
+    <div class="chat-header-icon" style="background:${f.bg}">${f.emoji}</div>
+    <div><div class="chat-header-name">${f.name} Community</div><div class="chat-header-sub">${f.members.toLocaleString()} members</div></div>
+    <div class="chat-online-count"><div class="chat-online-dot"></div>${f.onlineMembers.length} online</div>`;
+
+  renderMessages(chatMessages[f.id]||f.chatMessages);
+
+  document.getElementById('chatSidebar').innerHTML=`
+    <div class="cs-section">
+      <div class="cs-title">Online Now</div>
+      ${f.onlineMembers.map(m=>`
+      <div class="cs-member-row">
+        <div class="cs-member-av" style="background:${m.color}">${m.init}<div class="cs-online-dot"></div></div>
+        <div><div class="cs-member-name">${m.name}</div><div class="cs-member-role">${m.role}</div></div>
+        ${m.role==='Mentor'?'<span class="cs-role-tag">Mentor</span>':''}
+      </div>`).join('')}
+    </div>
+    <div class="cs-section" style="border-top:1px solid var(--border)">
+      <div class="cs-title">Mentors</div>
+      ${f.mentors.map(m=>`
+      <div class="cs-member-row" onclick="switchPanel('mentors',null)">
+        <div class="cs-member-av" style="background:${m.color}">${m.init}${m.online?'<div class="cs-online-dot"></div>':''}</div>
+        <div><div class="cs-member-name">${m.name}</div><div class="cs-member-role">${m.company}</div></div>
+        <span class="cs-role-tag">Mentor</span>
+      </div>`).join('')}
+    </div>`;
+}
+
+function renderMessages(msgs){
+  const container=document.getElementById('chatMessages');
+  if(!container)return;
+  let html='<div class="chat-day-divider">Today</div>';
+  msgs.forEach((m,i)=>{
+    const isOwn=m.own||false;
+    const grouped=i>0&&msgs[i-1].name===m.name&&!m.own;
+    html+=`<div class="chat-msg ${isOwn?'own':''} ${grouped?'grouped':''}">
+      <div class="msg-av-wrap"><div class="msg-av" style="background:${m.color||'var(--blue)'}">${m.init}${m.img?`<img src="${m.img}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%">`:''}</div></div>
+      <div class="msg-content">
+        ${!grouped&&!isOwn?`<div class="msg-meta"><span class="msg-name">${m.name}</span>${m.role==='mentor'?'<span class="msg-role-pill mentor">Mentor</span>':''}<span class="msg-time">${m.time}</span></div>`:''}
+        ${isOwn&&!grouped?`<div class="msg-meta"><span class="msg-time">${m.time}</span></div>`:''}
+        ${m.replyTo?`<div class="msg-reply-preview"><div class="msg-reply-name">${m.replyTo.name}</div>${m.replyTo.text}</div>`:''}
+        <div class="msg-bubble">${m.msg}</div>
+        ${m.image?`<img class="msg-img" src="${m.image}" alt="image">`:''}
+        ${m.reactions&&m.reactions.length?`<div class="msg-reactions">${m.reactions.map(r=>`<span class="reaction ${r.mine?'mine':''}" onclick="toggleReaction(${i},'${r.emoji}')">${r.emoji} ${r.count}</span>`).join('')}</div>`:''}
+        ${!isOwn?`<div style="display:flex;gap:8px;margin-top:4px"><button onclick="startReply(${i})" style="font-size:11px;color:var(--text-soft);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:color .15s" onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='var(--text-soft)'">↩ Reply</button></div>`:''}
+      </div>
+    </div>`;
+  });
+  container.innerHTML=html;
+  container.scrollTop=container.scrollHeight;
+}
+
+function sendMessage(){
+  const inp=document.getElementById('chatInput');
+  const text=inp?.value.trim();
+  if(!text&&!pendingChatImage)return;
+  const f=currentField;
+  const msgs=chatMessages[f.id]||[...f.chatMessages];
+  const now=new Date();
+  const timeStr=now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes()+' '+(now.getHours()<12?'AM':'PM');
+  const newMsg={
+    init:userName.substring(0,2).toUpperCase(),
+    name:userName.charAt(0).toUpperCase()+userName.slice(1),
+    color:'var(--blue)',
+    role:'student',
+    msg:text,
+    time:timeStr,
+    own:true,
+    reactions:[],
+    image:pendingChatImage||null,
+    replyTo:replyingTo,
+    img:userPhoto||null,
+  };
+  msgs.push(newMsg);
+  chatMessages[f.id]=msgs;
+  localStorage.setItem('hh_chat_'+f.id,JSON.stringify(msgs));
+  inp.value='';
+  inp.style.height='';
+  pendingChatImage=null;
+  replyingTo=null;
+  document.getElementById('chatReplyPreview').classList.remove('show');
+  renderMessages(msgs);
+}
+
+let pendingChatImage=null;
+function handleChatImage(inp){
+  if(!inp.files[0])return;
+  const r=new FileReader();
+  r.onload=e=>{pendingChatImage=e.target.result;showToast('Image ready — press send');};
+  r.readAsDataURL(inp.files[0]);
+}
+
+function startReply(idx){
+  const f=currentField;
+  const msgs=chatMessages[f.id]||f.chatMessages;
+  const m=msgs[idx];
+  replyingTo={name:m.name,text:m.msg.substring(0,60)+(m.msg.length>60?'...':'')};
+  document.getElementById('crpText').textContent=`Replying to ${m.name}: "${replyingTo.text}"`;
+  document.getElementById('chatReplyPreview').classList.add('show');
+  document.getElementById('chatInput').focus();
+}
+
+function cancelReply(){replyingTo=null;document.getElementById('chatReplyPreview').classList.remove('show');}
+
+function toggleReaction(idx,emoji){
+  const f=currentField;
+  const msgs=chatMessages[f.id]||f.chatMessages;
+  const m=msgs[idx];
+  if(!m.reactions)m.reactions=[];
+  const existing=m.reactions.find(r=>r.emoji===emoji);
+  if(existing){existing.mine=!existing.mine;existing.count+=existing.mine?1:-1;if(existing.count<=0)m.reactions=m.reactions.filter(r=>r.emoji!==emoji);}
+  else m.reactions.push({emoji,count:1,mine:true});
+  chatMessages[f.id]=msgs;
+  localStorage.setItem('hh_chat_'+f.id,JSON.stringify(msgs));
+  renderMessages(msgs);
+}
+
+function insertEmoji(){
+  const emojis=['😊','🔥','💡','👆','🎉','💯','🙌','❓','📌','🚀'];
+  const inp=document.getElementById('chatInput');
+  if(inp)inp.value+=emojis[Math.floor(Math.random()*emojis.length)];
+}
+
+function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';}
+
+// ── MENTORS ──
+function renderMentors(){
+  const f=currentField;
+  document.getElementById('panelMentors').innerHTML=`
+  <div class="mentors-content">
+    <div class="section-heading" style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;margin-bottom:6px;color:var(--text)">${f.name} Mentors</div>
+    <p style="font-size:14px;color:var(--text-mid);margin-bottom:22px">${f.mentors.length} expert${f.mentors.length>1?'s':''} ready to guide you. Request a mentorship or ask a public question in the community chat.</p>
+    <div class="mentors-grid">
+      ${f.mentors.map(m=>`
+      <div class="mentor-card">
+        <div class="mc-top">
+          <div class="mc-av" style="background:${m.color}">${m.init}${m.online?'<div class="mc-online"></div>':''}</div>
+          <div>
+            <div class="mc-name">${m.name}</div>
+            <div class="mc-role">${m.role}</div>
+            <div class="mc-company">${m.company}</div>
+          </div>
+        </div>
+        <div class="mc-bio">${m.bio}</div>
+        <div class="mc-chips">${m.chips.map(c=>`<span class="mc-chip">${c}</span>`).join('')}</div>
+        <div class="mc-stats">
+          <div class="mc-stat"><strong>${m.ans}</strong> answers</div>
+          <div class="mc-stat"><strong>${m.students}</strong> students</div>
+          <div class="mc-stat"><strong>${m.rating}</strong> ★</div>
+        </div>
+        <div class="mc-actions">
+          <button class="mc-btn mc-btn-primary" onclick="showToast('Request sent to ${m.name}! ✓')">Request Mentorship</button>
+          <button class="mc-btn mc-btn-secondary" onclick="switchPanel('chat',null);document.querySelectorAll('.hs-item')[1].classList.add('active');document.querySelectorAll('.hs-item')[0].classList.remove('active')">Message in Chat</button>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+// ── ROADMAP ──
+function renderRoadmap(){
+  const f=currentField;
+  const total=f.phases.reduce((s,p)=>s+p.nodes.length,0);
+  const done=Object.keys(completed).filter(k=>k.startsWith(f.id+'_')).length;
+  const pct=total>0?Math.round((done/total)*100):0;
+  const rmHTML=f.phases.map((ph,pi)=>`
+    <div class="phase-block">
+      <div class="phase-label">${ph.label}</div>
+      ${ph.nodes.map((n,ni)=>{
+        const key=f.id+'_'+pi+'_'+ni;
+        const isDone=!!completed[key];
+        return `<div class="rm-node" onclick="openLesson('${f.id}',${pi},${ni})">
+          <div class="rm-node-left">
+            <div class="rm-circle ${isDone?'done':''}">${isDone?`<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`:pi*10+ni+1}</div>
+            ${(pi<f.phases.length-1||ni<ph.nodes.length-1)?`<div class="rm-line ${isDone?'done':''}"></div>`:''}
+          </div>
+          <div class="rm-body ${isDone?'done':''}">
+            <div class="rm-title">${n.t}${isDone?'<span style="font-size:10px;font-weight:700;color:var(--blue);margin-left:auto">✓ Done</span>':''}<span class="rm-dur">${n.dur}</span></div>
+            <div class="rm-sub">${n.s}</div>
+            <div class="rm-tags">${n.tags.map(t=>`<span class="rm-tag">${t}</span>`).join('')}</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`).join('');
+  document.getElementById('panelRoadmap').innerHTML=`
+  <div class="roadmap-content">
+    <div>${rmHTML}</div>
+    <div>
+      <div class="rm-sidebar-card">
+        <div class="rm-sc-title">Your Progress</div>
+        <div class="prog-big" style="color:${f.color}">${pct}%</div>
+        <div class="prog-bar"><div class="prog-fill" style="background:${f.color};width:${pct}%"></div></div>
+        <div class="prog-lbl">${done} of ${total} lessons complete</div>
+      </div>
+      <div class="rm-sidebar-card">
+        <div class="rm-sc-title">Resources</div>
+        ${f.resources.map(r=>`
+        <div class="resource-row" onclick="showToast('Opening ${r.name}...')">
+          <div class="res-icon">${r.icon}</div>
+          <div><div class="res-name">${r.name}</div><div class="res-type">${r.type}</div></div>
+          ${r.free?'<span class="res-free">Free</span>':''}
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── LESSON MODAL ──
+function openLesson(fid,pi,ni){
+  const f=FIELDS.find(x=>x.id===fid);
+  const n=f.phases[pi].nodes[ni];
+  currentLesson={fid,pi,ni,n};
+  const key=fid+'_'+pi+'_'+ni;
+  document.getElementById('lmTitle').textContent=n.t;
+  document.getElementById('lmEn').textContent=`${n.t} is a key topic in ${f.name}. ${n.s}. Mastering this gives you a strong foundation for the next steps in your learning journey.`;
+  document.getElementById('lmSo').textContent=`${n.t} waa mawduuc muhiim ah oo ku jira ${f.name}. ${n.s}. Bartaanku wuxuu kaa caawin doonaa tallaabooyinka xiga ee safarkaaga waxbarasho.`;
+  document.getElementById('lmCode').textContent=`// ${n.t}\n// ${n.tags.join(', ')} · ${n.dur}\n\nconsole.log("Studying: ${n.t}");`;
+  const btn=document.getElementById('lmDoneBtn');
+  if(completed[key]){btn.textContent='✓ Already Complete';btn.style.background='var(--green)';}
+  else{btn.textContent='✓ Mark as Complete';btn.style.background='';}
+  document.getElementById('lessonOverlay').classList.add('open');
+}
+function closeLesson(){document.getElementById('lessonOverlay').classList.remove('open');}
+function markDone(){
+  if(!currentLesson)return;
+  const {fid,pi,ni}=currentLesson;
+  const key=fid+'_'+pi+'_'+ni;
+  completed[key]=true;
+  localStorage.setItem('hh_completed',JSON.stringify(completed));
+  const btn=document.getElementById('lmDoneBtn');
+  btn.textContent='✓ Complete!';btn.style.background='var(--green)';
+  closeLesson();
+  if(activePanel==='roadmap')renderRoadmap();
+  showToast('Lesson complete ✓ +10 points');
+}
+
+// ── LEADERBOARD ──
+function renderLeaderboard(){
+  const f=currentField;
+  const lb=f.leaderboard;
+  const podium=lb.slice(0,3);
+  const rest=lb.slice(3);
+  document.getElementById('panelLeaderboard').innerHTML=`
+  <div class="lb-content">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;margin-bottom:6px;color:var(--text)">Leaderboard</div>
+    <p style="font-size:13px;color:var(--text-mid);margin-bottom:22px">Points earned by completing lessons, answering questions, and helping the community.</p>
+    <div class="lb-podium">
+      ${podium[1]?`<div class="lb-podium-card">
+        <div class="lb-pos-av" style="background:${podium[1].color};width:44px;height:44px;border-radius:50%;margin:0 auto 8px;font-size:14px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center">${podium[1].init}</div>
+        <div class="lb-pos-name">${podium[1].name}</div><div class="lb-pos-loc">${podium[1].loc}</div>
+        <div class="lb-pos-score">${podium[1].score.toLocaleString()}</div>
+        <div class="lb-pos-num">2ND</div></div>`:'<div></div>'}
+      ${podium[0]?`<div class="lb-podium-card first">
+        <div class="lb-crown">👑</div>
+        <div class="lb-pos-av" style="background:${podium[0].color};width:52px;height:52px;border-radius:50%;margin:0 auto 8px;font-size:16px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center">${podium[0].init}</div>
+        <div class="lb-pos-name">${podium[0].name}</div><div class="lb-pos-loc">${podium[0].loc}</div>
+        <div class="lb-pos-score" style="font-size:28px">${podium[0].score.toLocaleString()}</div>
+        <div class="lb-pos-num">1ST</div></div>`:''}
+      ${podium[2]?`<div class="lb-podium-card">
+        <div style="height:20px"></div>
+        <div class="lb-pos-av" style="background:${podium[2].color};width:40px;height:40px;border-radius:50%;margin:0 auto 8px;font-size:13px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center">${podium[2].init}</div>
+        <div class="lb-pos-name">${podium[2].name}</div><div class="lb-pos-loc">${podium[2].loc}</div>
+        <div class="lb-pos-score">${podium[2].score.toLocaleString()}</div>
+        <div class="lb-pos-num">3RD</div></div>`:'<div></div>'}
+    </div>
+    ${rest.map((m,i)=>`
+    <div class="lb-row">
+      <div class="lb-rank">${i+4}</div>
+      <div class="lb-av" style="background:${m.color}">${m.init}</div>
+      <div class="lb-info"><div class="lb-name">${m.name}</div><div class="lb-loc">${m.loc}</div></div>
+      <div style="text-align:right"><div class="lb-score">${m.score.toLocaleString()}</div><div class="lb-change">${m.change} this week</div></div>
+    </div>`).join('')}
+    <div class="lb-row" style="border:2px solid var(--blue-mid);background:var(--blue-light)">
+      <div class="lb-rank" style="color:var(--blue)">${lb.length+1}</div>
+      <div class="lb-av" style="background:var(--blue)">${userName.substring(0,2).toUpperCase()}</div>
+      <div class="lb-info"><div class="lb-name">${userName.charAt(0).toUpperCase()+userName.slice(1)} (You)</div><div class="lb-loc">Community member</div></div>
+      <div style="text-align:right"><div class="lb-score" style="color:var(--blue)">${Object.keys(completed).filter(k=>k.startsWith(currentField.id+'_')).length*10}</div><div class="lb-change" style="color:var(--green)">+${Object.keys(completed).filter(k=>k.startsWith(currentField.id+'_')).length*10} total</div></div>
+    </div>
+  </div>`;
+}
+
+// ── EVENTS ──
+function renderEvents(){
+  const f=currentField;
+  let rsvped=JSON.parse(localStorage.getItem('hh_rsvp_'+f.id)||'[]');
+  document.getElementById('panelEvents').innerHTML=`
+  <div class="events-content">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;margin-bottom:6px;color:var(--text)">Upcoming Events</div>
+    <p style="font-size:13px;color:var(--text-mid);margin-bottom:22px">Live sessions, workshops, and challenges hosted by your mentors and community.</p>
+    ${f.events.map((e,i)=>`
+    <div class="ev-card">
+      <div class="ev-date-block"><div class="ev-day">${e.day}</div><div class="ev-month">${e.month}</div></div>
+      <div class="ev-info">
+        <div class="ev-title">${e.title}</div>
+        <div class="ev-desc">${e.desc}</div>
+        <div class="ev-meta">
+          <span class="ev-type-pill ${e.type==='online'?'ev-type-online':e.type==='challenge'?'ev-type-challenge':'ev-type-live'}">${e.type==='online'?'Online':e.type==='challenge'?'Challenge':'Live'}</span>
+          <span class="ev-meta-item">⏰ ${e.time}</span>
+          <span class="ev-meta-item">🧭 ${e.host}</span>
+          <span class="ev-meta-item">👥 ${e.attendees} going</span>
+        </div>
+      </div>
+      <button class="ev-rsvp ${rsvped.includes(i)?'rsvped':''}" onclick="rsvpEvent(${i},this,'${f.id}')">${rsvped.includes(i)?'✓ Going':'RSVP'}</button>
+    </div>`).join('')}
+  </div>`;
+}
+
+function rsvpEvent(i,btn,fid){
+  let rsvped=JSON.parse(localStorage.getItem('hh_rsvp_'+fid)||'[]');
+  if(rsvped.includes(i)){rsvped=rsvped.filter(x=>x!==i);btn.textContent='RSVP';btn.classList.remove('rsvped');}
+  else{rsvped.push(i);btn.textContent='✓ Going';btn.classList.add('rsvped');showToast("You're going! Event saved ✓");}
+  localStorage.setItem('hh_rsvp_'+fid,JSON.stringify(rsvped));
+}
+
+// ── TOAST ──
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+
+// ── INIT ──
+renderPicker();
+</script>
+</body>
+</html>

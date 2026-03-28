@@ -1,31 +1,61 @@
 const GROQ_MODEL = 'llama-3.3-70b-versatile'
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
 
+const SOMALI_SYSTEM_PROMPT = `"Adiga waxaad tahay macallin teknoolojiyada ah oo ku hadla 
+af Soomaali dabiici ah. Marka aad ku jawaabayso af Soomaali:
+
+- Isticmaal af Soomaali sax ah oo ay dadka reer Soomaaliya 
+  ay si fudud u fahmaan
+- HA turjumin erey-ka-erey Ingiriisiga — qor si dabiici ah 
+  sida Soomaali wax u qoro
+- Ereyada farsamada ee aan lahayn turjumaad Soomaali 
+  (sida 'algorithm', 'database', 'function') — u sii af 
+  Ingiriisi laakiin sharax macnahooda Soomaali ah
+- Heerka waxbarashada ha ahaado mid fudud oo waxtar leh
+- Jawaabtu ha ka gaabato 200 erey
+
+Tusaale KHALAD ah (ha samaynin): 
+'Algorithm waa tilmaan-raac ah oo la raacaa'
+
+Tusaale SAXIIX ah (samee sidaan):
+'Algorithm waa taxane tallaabooyin ah oo kombiyuutarka 
+la siinayo si uu u xaliyo dhibaato'
+
+Kaliya isticmaal af Soomaali habboon."`
+
+const ENGLISH_MARKERS = new Set([
+  'the', 'and', 'for', 'with', 'that', 'this', 'from', 'your', 'you', 'are', 'how',
+  'what', 'why', 'when', 'where', 'can', 'use', 'using', 'into', 'then', 'than',
+  'code', 'data', 'system', 'build', 'learn', 'answer', 'question', 'english',
+  'response', 'explain', 'database', 'function', 'algorithm', 'frontend', 'backend',
+])
+
 const SYSTEM_PROMPTS = {
   en: `You are a helpful CS tutor on Hage Hub, a platform for Somali tech students and professionals. Answer clearly, encouragingly, and practically. Include code examples when relevant. Keep answers under 250 words.`,
-
-  so: `Adiga waxaad tahay macallin CS ah oo ku shaqeeya Hage Hub, goobta bulshada teknoolojiyada Soomaalida. Ku jawaab af Soomaali oo dabiici ah — HAY isticmaalin turjumaad toos ah oo Ingiriisi. Isticmaal luqadda Soomaalida ee dadka reer Soomaaliya ku hadlaan. Haddii ereyga farsamada aan lahayn turjumaad Soomaali, isticmaal ereyga Ingiriisiga oo ku sharax macnaheeda Soomaaliga. Jawaabtu ha ka gaabato 250 erey.`,
-
+  so: SOMALI_SYSTEM_PROMPT,
   both: `You are a helpful CS tutor on Hage Hub. Answer in BOTH English and Somali (af Soomaali).
 
 Format your response exactly like this:
 
-🇬🇧 English:
+English:
 [English answer here]
 
 ---
 
-🇸🇴 Af Soomaali:
-[Somali answer here — must be authentic natural Somali, NOT word-for-word translation. Write as a native Somali speaker would.]`,
+Af Soomaali:
+[Somali answer here]
+
+Use this Somali quality standard exactly when writing the Somali portion:
+${SOMALI_SYSTEM_PROMPT}`,
 }
 
-/**
- * Ask Hage AI a question.
- * @param {string} message - The user's question
- * @param {'en'|'so'|'both'} lang - Response language
- * @param {Array<{role:string,content:string}>} history - Previous messages (exclude system)
- * @returns {Promise<string>} The AI response text
- */
+function shouldWarnSomaliQuality(text) {
+  const words = (text.toLowerCase().match(/[a-z']+/g) ?? [])
+  if (!words.length) return false
+  const englishWords = words.filter((word) => ENGLISH_MARKERS.has(word)).length
+  return (englishWords / words.length) > 0.4
+}
+
 export async function askHageAI(message, lang = 'both', history = []) {
   const key = import.meta.env.VITE_GROQ_API_KEY
   if (!key) {
@@ -45,7 +75,9 @@ export async function askHageAI(message, lang = 'both', history = []) {
       max_tokens: 1024,
       messages: [
         { role: 'system', content: SYSTEM_PROMPTS[lang] ?? SYSTEM_PROMPTS.both },
-        ...history.filter((m) => m.role !== 'system').map(({ role, content }) => ({ role, content })),
+        ...history
+          .filter((messageItem) => messageItem.role !== 'system')
+          .map(({ role, content }) => ({ role, content })),
         { role: 'user', content: message },
       ],
     }),
@@ -59,6 +91,14 @@ export async function askHageAI(message, lang = 'both', history = []) {
 
   const data = await res.json()
   const text = data.choices?.[0]?.message?.content
-  if (!text) throw new Error('AI returned an empty response.')
-  return text
+  if (!text) {
+    throw new Error('AI returned an empty response.')
+  }
+
+  return {
+    content: text,
+    warning: lang === 'so' && shouldWarnSomaliQuality(text)
+      ? 'AI response may not be fully in Somali — we are working on improving this'
+      : '',
+  }
 }
