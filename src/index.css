@@ -56,3 +56,71 @@
     @apply box-border;
   }
 }
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+  .nav-tabs-desktop { display: none; }
+  .mobile-bottom-nav { display: flex; }
+  .app-content,
+  .page-content,
+  .main-content {
+    padding-bottom: 80px !important;
+  }
+  .page-two-col {
+    grid-template-columns: 1fr !important;
+  }
+  .sidebar-right {
+    order: 2;
+  }
+  .hub-page {
+    flex-direction: column !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .hub-sidebar {
+    display: none !important;
+  }
+  .hub-main {
+    width: 100% !important;
+    overflow: visible !important;
+  }
+  .hub-panel {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .mobile-hub-tabs {
+    display: flex !important;
+  }
+  .chat-panel {
+    flex-direction: column !important;
+    height: calc(100vh - 180px) !important;
+  }
+  .chat-sidebar {
+    display: none !important;
+  }
+  .fields-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .roadmap-content {
+    grid-template-columns: 1fr !important;
+  }
+  .roadmap-sidebar {
+    display: none !important;
+  }
+  .mobile-roadmap-progress {
+    display: block !important;
+  }
+  .mentor-panel-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-bottom-nav { display: none; }
+  .mobile-hub-tabs { display: none !important; }
+  .mobile-roadmap-progress { display: none !important; }
+}

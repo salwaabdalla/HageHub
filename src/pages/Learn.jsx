@@ -172,7 +172,7 @@ function FieldPicker({ fields, allFields, joined, completed, searchQuery, onSear
       </div>
 
       {/* Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
+      <div className="fields-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
         {fields.map(f => {
           const total = f.phases.reduce((s, p) => s + p.nodes.length, 0)
           const { done, pct } = getProgress(f.id, total)
@@ -256,7 +256,7 @@ const HUB_NAV = [
 
 function HubSidebar({ field: f, activePanel, onPanelChange, onBack }) {
   return (
-    <div style={{ width: 220, minWidth: 220, background: '#fff', borderRight: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column', overflowY: 'auto', flexShrink: 0 }}>
+    <div className="hub-sidebar" style={{ width: 220, minWidth: 220, background: '#fff', borderRight: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column', overflowY: 'auto', flexShrink: 0 }}>
       <div style={{ padding: '18px 16px 12px', borderBottom: `1px solid ${S.border}` }}>
         <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: S.textSoft, cursor: 'pointer', marginBottom: 14, background: 'none', border: 'none', fontFamily: "'DM Sans', sans-serif" }}>
           <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><polyline points="15 18 9 12 15 6" /></svg>
@@ -306,6 +306,49 @@ function HubSidebar({ field: f, activePanel, onPanelChange, onBack }) {
         ))}
         <div style={{ fontSize: 11, color: S.textSoft, marginTop: 8 }}>{f.onlineMembers.length} online</div>
       </div>
+    </div>
+  )
+}
+
+function MobileHubTabs({ activePanel, onPanelChange }) {
+  return (
+    <div className="mobile-hub-tabs" style={{
+      display: 'flex',
+      gap: 8,
+      overflowX: 'auto',
+      padding: '12px 16px',
+      borderBottom: `1px solid ${S.border}`,
+      background: 'white',
+      scrollbarWidth: 'none',
+      WebkitOverflowScrolling: 'touch',
+      flexShrink: 0,
+    }}>
+      {['Overview', 'Chat', 'Mentors', 'Roadmap', 'Leaderboard', 'Events'].map((tab) => {
+        const value = tab.toLowerCase()
+        const active = activePanel === value
+        return (
+          <button
+            key={tab}
+            onClick={() => onPanelChange(value)}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 100,
+              border: '1.5px solid',
+              borderColor: active ? '#4189DD' : '#dce6f5',
+              background: active ? '#4189DD' : 'white',
+              color: active ? 'white' : '#8a9bbf',
+              fontSize: 12,
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+              cursor: 'pointer',
+              fontFamily: 'DM Sans, sans-serif',
+              flexShrink: 0,
+            }}
+          >
+            {tab}
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -471,7 +514,7 @@ function ChatPanel({ field: f, userName, onSwitchPanel }) {
   const initials = userName.substring(0, 2).toUpperCase()
 
   return (
-    <div style={{ display: 'flex', flex: 1, overflow: 'hidden', height: '100%' }}>
+    <div className="chat-panel" style={{ display: 'flex', flex: 1, overflow: 'hidden', height: '100%' }}>
       {/* Main chat */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header */}
@@ -598,7 +641,7 @@ function ChatPanel({ field: f, userName, onSwitchPanel }) {
       </div>
 
       {/* Chat sidebar */}
-      <div style={{ width: 240, borderLeft: `1px solid ${S.border}`, overflowY: 'auto', background: '#fff' }}>
+      <div className="chat-sidebar" style={{ width: 240, borderLeft: `1px solid ${S.border}`, overflowY: 'auto', background: '#fff' }}>
         <div style={{ padding: '16px 16px 8px' }}>
           <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: S.textSoft, marginBottom: 12 }}>Online Now</div>
           {f.onlineMembers.map((m, i) => (
@@ -642,7 +685,7 @@ function MentorsPanel({ field: f, onSwitchPanel, showToast }) {
     <div style={{ padding: 24, maxWidth: 900 }}>
       <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 700, marginBottom: 6, color: S.text }}>{f.name} Mentors</div>
       <p style={{ fontSize: 14, color: S.textMid, marginBottom: 22 }}>{f.mentors.length} expert{f.mentors.length > 1 ? 's' : ''} ready to guide you. Request a mentorship or ask a public question in the community chat.</p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+      <div className="mentor-panel-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
         {f.mentors.map((m, i) => (
           <MentorCard key={i} mentor={m} onRequest={() => showToast(`Request sent to ${m.name}! ✓`)} onChat={() => onSwitchPanel('chat')} />
         ))}
@@ -691,8 +734,9 @@ function RoadmapPanel({ field: f, completed, onOpenLesson }) {
   let nodeNum = 0
 
   return (
-    <div style={{ padding: 24, display: 'grid', gridTemplateColumns: '1fr 260px', gap: 20, alignItems: 'start', maxWidth: 1000 }}>
+    <div className="roadmap-content" style={{ padding: 24, display: 'grid', gridTemplateColumns: '1fr 260px', gap: 20, alignItems: 'start', maxWidth: 1000 }}>
       <div>
+        <div className="mobile-roadmap-progress" style={{ fontSize: 12, color: S.textSoft, marginBottom: 16 }}>{pct}% complete</div>
         {f.phases.map((ph, pi) => (
           <div key={pi} style={{ marginBottom: 28 }}>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: S.textSoft, marginBottom: 12, paddingLeft: 42 }}>{ph.label}</div>
@@ -717,7 +761,7 @@ function RoadmapPanel({ field: f, completed, onOpenLesson }) {
         ))}
       </div>
 
-      <div>
+      <div className="roadmap-sidebar">
         <div style={{ background: '#fff', border: `1px solid ${S.border}`, borderRadius: S.radius, padding: '16px 18px', marginBottom: 14 }}>
           <div style={{ fontWeight: 700, fontSize: 12, color: S.text, marginBottom: 10, paddingBottom: 8, borderBottom: `1px solid ${S.border}` }}>Your Progress</div>
           <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 36, fontWeight: 700, color: f.color }}>{pct}%</div>
@@ -901,9 +945,9 @@ function EventCard({ event: e, rsvped, typeStyle, onRsvp }) {
 // ─── Field Hub ─────────────────────────────────────────────────────
 function FieldHub({ field, activePanel, onPanelChange, onBack, completed, markComplete, toggleRsvp, isRsvped, onOpenLesson, showToast, userName, navigate }) {
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
+    <div className="hub-page" style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
       <HubSidebar field={field} activePanel={activePanel} onPanelChange={onPanelChange} onBack={onBack} />
-      <div style={{ flex: 1, overflowY: activePanel === 'chat' ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column' }}>
+      <div className="hub-main" style={{ flex: 1, overflowY: activePanel === 'chat' ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* Back bar — always visible above panels */}
         <div style={{ padding: '10px 20px', borderBottom: `1px solid ${S.border}`, background: '#fff', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <button
@@ -931,12 +975,15 @@ function FieldHub({ field, activePanel, onPanelChange, onBack, completed, markCo
           <span style={{ fontSize: 12, color: S.textSoft }}>/</span>
           <span style={{ fontSize: 13, fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, color: S.text }}>{field.emoji} {field.name}</span>
         </div>
-        {activePanel === 'overview' && <OverviewPanel field={field} completed={completed} onSwitchPanel={onPanelChange} />}
-        {activePanel === 'chat' && <ChatPanel field={field} userName={userName} onSwitchPanel={onPanelChange} />}
-        {activePanel === 'mentors' && <MentorsPanel field={field} onSwitchPanel={onPanelChange} showToast={showToast} />}
-        {activePanel === 'roadmap' && <RoadmapPanel field={field} completed={completed} onOpenLesson={onOpenLesson} />}
-        {activePanel === 'leaderboard' && <LeaderboardPanel field={field} completed={completed} userName={userName} />}
-        {activePanel === 'events' && <EventsPanel field={field} isRsvped={isRsvped} onToggleRsvp={toggleRsvp} showToast={showToast} />}
+        <MobileHubTabs activePanel={activePanel} onPanelChange={onPanelChange} />
+        <div className="hub-panel">
+          {activePanel === 'overview' && <OverviewPanel field={field} completed={completed} onSwitchPanel={onPanelChange} />}
+          {activePanel === 'chat' && <ChatPanel field={field} userName={userName} onSwitchPanel={onPanelChange} />}
+          {activePanel === 'mentors' && <MentorsPanel field={field} onSwitchPanel={onPanelChange} showToast={showToast} />}
+          {activePanel === 'roadmap' && <RoadmapPanel field={field} completed={completed} onOpenLesson={onOpenLesson} />}
+          {activePanel === 'leaderboard' && <LeaderboardPanel field={field} completed={completed} userName={userName} />}
+          {activePanel === 'events' && <EventsPanel field={field} isRsvped={isRsvped} onToggleRsvp={toggleRsvp} showToast={showToast} />}
+        </div>
       </div>
     </div>
   )

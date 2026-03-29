@@ -4,9 +4,8 @@ import { contributors as seededContributors } from '../data/questions'
 import { QuestionCard } from '../components/knowledge/QuestionCard'
 import { AskModal } from '../components/knowledge/AskModal'
 import { fetchQuestions, insertQuestion } from '../lib/db/questions'
-import { fetchAnswers, insertAnswer } from '../lib/db/answers'
+import { fetchAnswerCounts, fetchAnswers, insertAnswer } from '../lib/db/answers'
 import { fetchTopContributors } from '../lib/db/contributors'
-import { castVote, fetchUserVotes } from '../lib/db/votes'
 import { supabase } from '../lib/supabase'
 import { askHageAI } from '../lib/ai'
 
@@ -16,14 +15,14 @@ const FALLBACK_TAGS = ['algorithms', 'python', 'react', 'web-dev', 'ai/ml', 'sys
 function aiChatKey(user) { return `hh_ai_messages_${user?.id || 'guest'}` }
 
 const topNavItems = [
-  { label: 'Ask', to: '/home', page: 'dashboard' },
-  { label: 'Learn', to: '/learn', page: 'learn' },
-  { label: 'Questions', to: '/ask', page: 'knowledge' },
-  { label: 'AI', to: '/ai', page: 'ai' },
-  { label: 'Connect', to: '/connect', page: 'connect' },
-  { label: 'Build', to: '/build', page: 'build' },
-  { label: 'Stories', to: '/stories', page: 'stories' },
-  { label: 'Jobs', to: '/jobs', page: 'jobs' },
+  { label: 'Ask', icon: '🏠', to: '/home', page: 'dashboard' },
+  { label: 'Learn', icon: '📚', to: '/learn', page: 'learn' },
+  { label: 'Questions', icon: '💬', to: '/ask', page: 'knowledge' },
+  { label: 'AI', icon: '🤖', to: '/ai', page: 'ai' },
+  { label: 'Connect', icon: '🤝', to: '/connect', page: 'connect' },
+  { label: 'Build', icon: '🛠️', to: '/build', page: 'build' },
+  { label: 'Stories', icon: '📝', to: '/stories', page: 'stories' },
+  { label: 'Jobs', icon: '💼', to: '/jobs', page: 'jobs' },
 ]
 
 const communitySeed = [
@@ -215,7 +214,6 @@ function normalizeQuestion(row) {
     body: row.body,
     tags: row.tags ?? [],
     images: row.images ?? [],
-    votes: row.vote_count ?? 0,
     answers: row.answer_count ?? 0,
     poster: {
       init: row.poster_init,
@@ -244,6 +242,7 @@ function HageHubWorkspace({ user, onLogout }) {
   const [joinedProjects, setJoinedProjects] = useState(() => new Set())
   const [profileTab, setProfileTab] = useState('activity')
   const [showAskModal, setShowAskModal] = useState(false)
+  const [showMoreDrawer, setShowMoreDrawer] = useState(false)
   const [communityComments, setCommunityComments] = useState(() =>
     readStorage(COMMUNITY_FEED_KEY, communitySeed),
   )
@@ -260,6 +259,7 @@ function HageHubWorkspace({ user, onLogout }) {
   const [aiLoading, setAiLoading] = useState(false)
   const [threadAiAnswers, setThreadAiAnswers] = useState({})
   const [threadAiLoading, setThreadAiLoading] = useState(false)
+  const [aiExpanded, setAiExpanded] = useState(false)
   const [messageTranslations, setMessageTranslations] = useState({})
   const [translatingId, setTranslatingId] = useState('')
   const [threadReply, setThreadReply] = useState('')
@@ -285,11 +285,11 @@ function HageHubWorkspace({ user, onLogout }) {
   const [questionsLoading, setQuestionsLoading] = useState(true)
   const [threadAnswers, setThreadAnswers] = useState([])
   const [threadAnswersLoading, setThreadAnswersLoading] = useState(false)
-  const [userVotes, setUserVotes] = useState({}) // { [questionId]: -1|0|1 }
   const [topContributors, setTopContributors] = useState([])
   const userMeta = user?.metadata ?? {}
 
   const activeThread = questions.find((q) => q.id === activeThreadId)
+  const currentNavItem = topNavItems.find((item) => item.page === currentPage) ?? topNavItems[0]
   const availableTags = [...new Set(questions.flatMap((question) => question.tags ?? []))]
   const sidebarTags = availableTags.length ? availableTags : FALLBACK_TAGS
   const visibleContributors = topContributors.length ? topContributors : seededContributors
@@ -313,14 +313,16 @@ function HageHubWorkspace({ user, onLogout }) {
       setQuestionsLoading(true)
       try {
         const rows = await withTimeout(fetchQuestions(), 15000, 'Questions fetch')
-        const normalized = rows.map(normalizeQuestion)
+        const answerCounts = await withTimeout(
+          fetchAnswerCounts(rows.map((row) => row.id)),
+          10000,
+          'Answer counts fetch',
+        )
+        const normalized = rows.map((row) => ({
+          ...normalizeQuestion(row),
+          answers: answerCounts[row.id] ?? 0,
+        }))
         setQuestions(normalized)
-        // Load this user's votes for all fetched questions
-        if (user?.id && rows.length) {
-          const ids = rows.map((r) => r.id)
-          const votes = await withTimeout(fetchUserVotes(user.id, ids), 8000, 'Votes fetch')
-          setUserVotes(votes)
-        }
       } catch (err) {
         console.error('Failed to load questions:', err)
         // Keep the last good question state if a fetch fails.
@@ -379,10 +381,27 @@ function HageHubWorkspace({ user, onLogout }) {
     setThreadAnswers([]) // reset so stale answers from previous thread don't show
     setThreadAnswersLoading(true)
     withTimeout(fetchAnswers(activeThreadId), 10000, 'Answers fetch')
-      .then(setThreadAnswers)
+      .then((answers) => {
+        setThreadAnswers(answers)
+        setQuestions((prev) =>
+          prev.map((question) => (
+            question.id === activeThreadId
+              ? { ...question, answers: answers.length }
+              : question
+          )),
+        )
+      })
       .catch(console.error)
       .finally(() => setThreadAnswersLoading(false))
   }, [activeThreadId])
+
+  useEffect(() => {
+    setAiExpanded(false)
+  }, [activeThreadId])
+
+  useEffect(() => {
+    setShowMoreDrawer(false)
+  }, [pathname])
   // Load AI answer when a thread opens.
   useEffect(() => {
     if (!activeThreadId || !activeThread) return
@@ -410,19 +429,6 @@ function HageHubWorkspace({ user, onLogout }) {
   async function handleLogout() {
     await onLogout()
     navigate('/login')
-  }
-
-  // Vote on a question (used by QuestionCard and thread detail)
-  async function handleVote(questionId, value) {
-    if (!user?.id) return
-    const result = await castVote(questionId, user.id, value)
-    // Update local vote state
-    setUserVotes((prev) => ({ ...prev, [questionId]: result.userVote }))
-    // Update question vote count in local list
-    setQuestions((prev) =>
-      prev.map((q) => q.id === questionId ? { ...q, votes: result.newVoteCount } : q)
-    )
-    return result
   }
 
   // Post a new question to Supabase
@@ -623,14 +629,32 @@ function HageHubWorkspace({ user, onLogout }) {
     }
   }
 
+  const mainNavItems = [
+    { icon: '🏠', label: 'Home', page: 'dashboard', action: () => navigate('/home') },
+    { icon: '💬', label: 'Ask', page: 'ask-action', action: () => setShowAskModal(true) },
+    { icon: '🤖', label: 'AI', page: 'ai', action: () => navigate('/ai') },
+    { icon: '❓', label: 'Questions', page: 'knowledge', action: () => navigate('/ask') },
+    { icon: '•••', label: 'More', page: 'more', action: () => setShowMoreDrawer(true) },
+  ]
+
+  const moreItems = [
+    { icon: '📚', label: 'Learn', page: 'learn', action: () => navigate('/learn') },
+    { icon: '🤝', label: 'Connect', page: 'connect', action: () => navigate('/connect') },
+    { icon: '🔨', label: 'Build', page: 'build', action: () => navigate('/build') },
+    { icon: '✨', label: 'Stories', page: 'stories', action: () => navigate('/stories') },
+    { icon: '💼', label: 'Jobs', page: 'jobs', action: () => navigate('/jobs') },
+    { icon: '👤', label: 'Profile', page: 'profile', action: () => navigate('/profile') },
+    { icon: '⚙️', label: 'Settings', page: 'settings', action: () => navigate('/settings') },
+  ]
+
   return (
     <main className="min-h-screen bg-[#f4f7fb] text-slate-900">
       <header className="sticky top-0 z-40 border-b border-[#dce6f5] bg-white">
-        <div className="mx-auto flex max-w-[1240px] flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
-          <Link to="/" className="font-display text-3xl tracking-tight text-slate-950">
+        <div className="mx-auto flex max-w-[1240px] items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
+          <Link to="/" className="max-w-full truncate font-display text-2xl tracking-tight text-slate-950 sm:text-3xl">
             Hage Hub
           </Link>
-          <nav className="flex flex-wrap items-center gap-2 rounded-full border border-[#dce6f5] bg-[#f4f7fb] p-1">
+          <nav className="nav-tabs-desktop hidden flex-wrap items-center gap-2 rounded-full border border-[#dce6f5] bg-[#f4f7fb] p-1 md:flex">
             {topNavItems.map((item) => (
               <NavLink
                 key={item.label}
@@ -645,7 +669,10 @@ function HageHubWorkspace({ user, onLogout }) {
               </NavLink>
             ))}
           </nav>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#dce6f5] bg-[#f4f7fb] text-lg md:hidden">
+              {currentNavItem.icon}
+            </div>
             <NavLink to="/profile" className="flex items-center gap-3 rounded-full bg-white px-3 py-2">
               <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full">
                 <div style={{
@@ -666,22 +693,22 @@ function HageHubWorkspace({ user, onLogout }) {
                   {getInitials(user?.metadata?.name || user?.name)}
                 </div>
               </div>
-              <div>
+              <div className="hidden md:block">
                 <p className="text-sm font-semibold text-slate-900">{user?.name}</p>
                 <p className="text-xs text-slate-500">{user?.role || 'student'}</p>
               </div>
             </NavLink>
-            <NavLink to="/settings" className="rounded-full border border-[#dce6f5] bg-white px-4 py-2 text-sm font-medium text-slate-700">
+            <NavLink to="/settings" className="hidden rounded-full border border-[#dce6f5] bg-white px-4 py-2 text-sm font-medium text-slate-700 md:inline-flex">
               Settings
             </NavLink>
-            <button type="button" onClick={handleLogout} className="rounded-full border border-[#dce6f5] bg-white px-4 py-2 text-sm font-medium text-slate-700">
+            <button type="button" onClick={handleLogout} className="hidden rounded-full border border-[#dce6f5] bg-white px-4 py-2 text-sm font-medium text-slate-700 md:inline-flex">
               Logout
             </button>
           </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-[1240px] px-4 py-8 sm:px-6 lg:px-8">
+      <div className="main-content mx-auto max-w-[1240px] px-4 py-6 pb-24 sm:px-6 lg:px-8">
         {currentPage === 'dashboard' ? (
           <>
             <section className="relative overflow-hidden rounded-[28px] border border-[#dce6f5] bg-white px-6 py-8 shadow-[0_18px_60px_rgba(65,137,221,0.08)] sm:px-8 lg:px-11">
@@ -735,7 +762,7 @@ function HageHubWorkspace({ user, onLogout }) {
               </div>
             </section>
 
-            <section className="mt-6 grid gap-6 lg:grid-cols-[1fr_300px]">
+            <section className="page-two-col mt-6 grid gap-6 lg:grid-cols-[1fr_300px]">
               <div>
                 <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">
                   Recent Questions
@@ -746,14 +773,8 @@ function HageHubWorkspace({ user, onLogout }) {
                 </button>
                 <div className="space-y-3">
                   {questions.slice(0, 3).map((question) => (
-                    <article key={question.id} className="cursor-pointer rounded-[20px] border border-[#dce6f5] bg-white px-5 py-5 transition hover:-translate-y-0.5 hover:border-[#c8dff7] hover:shadow-[0_8px_24px_rgba(65,137,221,0.08)]" onClick={() => navigate('/ask', { state: { threadId: question.id } })}>
-                      <div className="flex gap-4">
-                        <div className="flex min-w-8 flex-col items-center gap-1">
-                          <button type="button" onClick={(event) => { event.stopPropagation(); handleVote(question.id, 1) }} className="flex h-7 w-7 items-center justify-center rounded-[10px] border border-[#dce6f5] bg-[#f4f7fb] text-xs text-slate-400">▲</button>
-                          <span className="text-sm font-bold text-slate-600">{question.votes}</span>
-                          <button type="button" onClick={(event) => { event.stopPropagation(); handleVote(question.id, -1) }} className="flex h-7 w-7 items-center justify-center rounded-[10px] border border-[#dce6f5] bg-[#f4f7fb] text-xs text-slate-400">▼</button>
-                        </div>
-                        <div className="min-w-0 flex-1">
+                    <article key={question.id} className="cursor-pointer rounded-[20px] border border-[#dce6f5] bg-white px-4 py-4 transition hover:-translate-y-0.5 hover:border-[#c8dff7] hover:shadow-[0_8px_24px_rgba(65,137,221,0.08)] sm:px-5 sm:py-5" onClick={() => navigate('/ask', { state: { threadId: question.id } })}>
+                      <div className="min-w-0">
                           <span className="rounded-full bg-[#eaf2fd] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#1a5db5]">
                             {question.lang === 'both' ? 'Both' : question.lang}
                           </span>
@@ -768,15 +789,14 @@ function HageHubWorkspace({ user, onLogout }) {
                               <span>{question.answers} answers</span>
                               <span>{question.time}</span>
                             </div>
-                          </div>
                         </div>
                       </div>
                     </article>
                   ))}
                 </div>
               </div>
-              <aside className="space-y-4">
-                <section className="rounded-[20px] border border-[#dce6f5] bg-white p-5">
+              <aside className="sidebar-right space-y-4">
+                <section className="rounded-[20px] border border-[#dce6f5] bg-white p-4 sm:p-5">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">Top Contributors</p>
                   <div className="mt-4 space-y-3">
                     {topContributors.map((contributor, index) => (
@@ -792,7 +812,7 @@ function HageHubWorkspace({ user, onLogout }) {
                     ))}
                   </div>
                 </section>
-                <section className="rounded-[20px] border border-[#dce6f5] bg-white p-5">
+                <section className="rounded-[20px] border border-[#dce6f5] bg-white p-4 sm:p-5">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">Popular Tags</p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {['algorithms', 'python', 'react', 'web-dev', 'ai/ml', 'system-design', 'somalia-tech'].map((tag) => (
@@ -800,7 +820,7 @@ function HageHubWorkspace({ user, onLogout }) {
                     ))}
                   </div>
                 </section>
-                <section className="rounded-[20px] bg-[#0f3d82] p-5 text-white">
+                <section className="rounded-[20px] bg-[#0f3d82] p-4 text-white sm:p-5">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/55">My Cohort</p>
                   <p className="mt-3 font-display text-3xl">No active cohort yet</p>
                   <p className="mt-2 text-sm text-white/70">Find a mentor in Connect ?</p>
@@ -873,18 +893,12 @@ function HageHubWorkspace({ user, onLogout }) {
                   </div>
                   <span className="text-xs text-slate-400">{activeThread.time}</span>
                   <div className="ml-auto flex items-center gap-4">
-                    <div className="flex items-center gap-1.5">
-                      <button type="button" onClick={() => handleVote(activeThread.id, 1)} className="flex h-8 w-8 items-center justify-center rounded-[10px] border border-[#dce6f5] bg-[#f4f7fb] text-xs text-slate-400 transition hover:border-[#4189DD] hover:text-[#4189DD]">▲</button>
-                      <span className="min-w-[2ch] text-center text-sm font-bold text-slate-700">{activeThread.votes}</span>
-                      <button type="button" onClick={() => handleVote(activeThread.id, -1)} className="flex h-8 w-8 items-center justify-center rounded-[10px] border border-[#dce6f5] bg-[#f4f7fb] text-xs text-slate-400 transition hover:border-red-300 hover:text-red-400">▼</button>
-                    </div>
                     <span className="text-sm text-slate-400">
                       {threadAnswers.length} {threadAnswers.length === 1 ? 'answer' : 'answers'}
                     </span>
                   </div>
                 </div>
 
-                {/* Body — only for user-created questions (not bilingual ones already shown above) */}
                 {activeThread.body && activeThread.lang !== 'both' && (
                   <p className="mt-5 text-[15px] leading-8 text-slate-600">{activeThread.body}</p>
                 )}
@@ -914,9 +928,50 @@ function HageHubWorkspace({ user, onLogout }) {
                     <span className="h-2 w-2 animate-bounce rounded-full bg-[#6aaae8] [animation-delay:300ms]" />
                   </div>
                 ) : (
-                  <p className="mt-3 whitespace-pre-wrap text-sm leading-8 text-white/85">
-                    {threadAiAnswers[activeThreadId]?.content || ''}
-                  </p>
+                  <>
+                    <div
+                      style={{
+                        maxHeight: aiExpanded ? 'none' : '80px',
+                        overflow: 'hidden',
+                        position: 'relative',
+                        marginTop: 12,
+                      }}
+                    >
+                      <p className="whitespace-pre-wrap text-sm leading-8 text-white/85">
+                        {threadAiAnswers[activeThreadId]?.content || ''}
+                      </p>
+                      {!aiExpanded && threadAiAnswers[activeThreadId]?.content ? (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            height: 40,
+                            background: 'linear-gradient(transparent, #0f3d82)',
+                          }}
+                        />
+                      ) : null}
+                    </div>
+                    {threadAiAnswers[activeThreadId]?.content ? (
+                      <button
+                        type="button"
+                        onClick={() => setAiExpanded((prev) => !prev)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'rgba(255,255,255,0.7)',
+                          fontSize: 13,
+                          cursor: 'pointer',
+                          marginTop: 8,
+                          fontFamily: 'DM Sans, sans-serif',
+                          padding: 0,
+                        }}
+                      >
+                        {aiExpanded ? '▲ Show less' : '▼ Show full answer'}
+                      </button>
+                    ) : null}
+                  </>
                 )}
                 {threadAiAnswers[activeThreadId]?.warning ? <p className="mt-3 text-xs text-amber-200">{threadAiAnswers[activeThreadId].warning}</p> : null}
                 {threadAiAnswers[activeThreadId]?.content ? (
@@ -996,7 +1051,7 @@ function HageHubWorkspace({ user, onLogout }) {
             </div>
           ) : (
             /* ── Questions List View ── */
-            <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+            <div className="page-two-col grid gap-6 lg:grid-cols-[1fr_280px]">
               <div>
                 {/* Page header */}
                 <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -1051,20 +1106,18 @@ function HageHubWorkspace({ user, onLogout }) {
                     </div>
                   ) : (
                     filteredQuestions.map((question) => (
-                        <QuestionCard
-                          key={question.id}
-                          question={question}
-                          onOpen={() => setActiveThreadId(question.id)}
-                          userVote={userVotes[question.id] ?? 0}
-                          onVote={handleVote}
-                        />
-                      ))
+                      <QuestionCard
+                        key={question.id}
+                        question={question}
+                        onOpen={() => setActiveThreadId(question.id)}
+                      />
+                    ))
                   )}
                 </div>
               </div>
 
               {/* Sidebar */}
-              <aside className="space-y-4">
+              <aside className="sidebar-right space-y-4">
                 <section className="rounded-[20px] border border-[#dce6f5] bg-white p-5">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">Top Contributors</p>
                   <div className="mt-4 space-y-3">
@@ -1707,6 +1760,141 @@ function HageHubWorkspace({ user, onLogout }) {
             </div>
           </div>
         ) : null}
+      </div>
+
+      <div className="mobile-bottom-nav">
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 64,
+            background: 'white',
+            borderTop: '1px solid #dce6f5',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-around',
+            zIndex: 100,
+            paddingBottom: 'env(safe-area-inset-bottom)',
+          }}
+        >
+          {mainNavItems.map((item) => (
+            <button
+              key={item.page}
+              type="button"
+              onClick={() => {
+                item.action()
+                if (item.page !== 'more') setShowMoreDrawer(false)
+              }}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 3,
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '6px 10px',
+                color: currentPage === item.page ? '#4189DD' : '#8a9bbf',
+                flex: 1,
+              }}
+            >
+              <span style={{ fontSize: 22 }}>{item.icon}</span>
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  fontFamily: 'DM Sans, sans-serif',
+                  letterSpacing: 0.3,
+                }}
+              >
+                {item.label}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {showMoreDrawer && (
+          <>
+            <div
+              onClick={() => setShowMoreDrawer(false)}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(12,18,32,0.5)',
+                zIndex: 150,
+              }}
+            />
+            <div
+              style={{
+                position: 'fixed',
+                bottom: 64,
+                left: 0,
+                right: 0,
+                background: 'white',
+                borderRadius: '20px 20px 0 0',
+                borderTop: '1px solid #dce6f5',
+                zIndex: 200,
+                padding: '12px 0 20px',
+                animation: 'slideUp 0.2s ease',
+              }}
+            >
+              <div
+                style={{
+                  width: 40,
+                  height: 4,
+                  background: '#dce6f5',
+                  borderRadius: 2,
+                  margin: '0 auto 16px',
+                }}
+              />
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr 1fr',
+                  gap: 4,
+                  padding: '0 16px',
+                }}
+              >
+                {moreItems.map((item) => (
+                  <button
+                    key={item.page}
+                    type="button"
+                    onClick={() => {
+                      item.action()
+                      setShowMoreDrawer(false)
+                    }}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '14px 8px',
+                      background: currentPage === item.page ? '#eaf2fd' : 'transparent',
+                      border: '1px solid',
+                      borderColor: currentPage === item.page ? '#c8dff7' : 'transparent',
+                      borderRadius: 12,
+                      cursor: 'pointer',
+                      color: currentPage === item.page ? '#4189DD' : '#3d4f6e',
+                    }}
+                  >
+                    <span style={{ fontSize: 24 }}>{item.icon}</span>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        fontFamily: 'DM Sans, sans-serif',
+                      }}
+                    >
+                      {item.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       <AskModal
