@@ -1,104 +1,103 @@
-const GROQ_MODEL = 'llama-3.3-70b-versatile'
-const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
-
-const SOMALI_SYSTEM_PROMPT = `"Adiga waxaad tahay macallin teknoolojiyada ah oo ku hadla 
+const SOMALI_SYSTEM_PROMPT = `Adiga waxaad tahay macallin teknoolojiyada ah oo ku hadla 
 af Soomaali dabiici ah. Marka aad ku jawaabayso af Soomaali:
-
-- Isticmaal af Soomaali sax ah oo ay dadka reer Soomaaliya 
-  ay si fudud u fahmaan
-- HA turjumin erey-ka-erey Ingiriisiga — qor si dabiici ah 
-  sida Soomaali wax u qoro
-- Ereyada farsamada ee aan lahayn turjumaad Soomaali 
-  (sida 'algorithm', 'database', 'function') — u sii af 
-  Ingiriisi laakiin sharax macnahooda Soomaali ah
-- Heerka waxbarashada ha ahaado mid fudud oo waxtar leh
-- Jawaabtu ha ka gaabato 200 erey
-
-Tusaale KHALAD ah (ha samaynin): 
-'Algorithm waa tilmaan-raac ah oo la raacaa'
-
-Tusaale SAXIIX ah (samee sidaan):
-'Algorithm waa taxane tallaabooyin ah oo kombiyuutarka 
-la siinayo si uu u xaliyo dhibaato'
-
-Kaliya isticmaal af Soomaali habboon."`
+- Isticmaal af Soomaali sax ah oo ay dadka reer Soomaaliya ay si fudud u fahmaan
+- HA turjumin erey-ka-erey Ingiriisiga
+- Ereyada farsamada (algorithm, database, function) - u sii af Ingiriisi laakiin sharax Soomaali
+- Jawaabtu ha ka gaabato 200 erey`
 
 const ENGLISH_MARKERS = new Set([
-  'the', 'and', 'for', 'with', 'that', 'this', 'from', 'your', 'you', 'are', 'how',
-  'what', 'why', 'when', 'where', 'can', 'use', 'using', 'into', 'then', 'than',
-  'code', 'data', 'system', 'build', 'learn', 'answer', 'question', 'english',
-  'response', 'explain', 'database', 'function', 'algorithm', 'frontend', 'backend',
+  'the','and','for','with','that','this','from','your','you','are','how',
+  'what','why','when','where','can','use','using','into','then','than',
+  'code','data','system','build','learn','answer','question','english',
+  'response','explain','database','function','algorithm','frontend','backend',
 ])
 
 const SYSTEM_PROMPTS = {
-  en: `You are a helpful CS tutor on Hage Hub, a platform for Somali tech students and professionals. Answer clearly, encouragingly, and practically. Include code examples when relevant. Keep answers under 250 words.`,
+  en: `You are a helpful CS tutor on Hage Hub for Somali tech students. Answer clearly and practically. Keep answers under 250 words.`,
   so: SOMALI_SYSTEM_PROMPT,
-  both: `You are a helpful CS tutor on Hage Hub. Answer in BOTH English and Somali (af Soomaali).
-
-Format your response exactly like this:
-
+  both: `You are a helpful CS tutor on Hage Hub. Answer in BOTH English and Somali.
+Format exactly like this:
 English:
-[English answer here]
-
+[English answer]
 ---
-
 Af Soomaali:
-[Somali answer here]
-
-Use this Somali quality standard exactly when writing the Somali portion:
-${SOMALI_SYSTEM_PROMPT}`,
+[Somali answer]`,
 }
 
 function shouldWarnSomaliQuality(text) {
   const words = (text.toLowerCase().match(/[a-z']+/g) ?? [])
   if (!words.length) return false
-  const englishWords = words.filter((word) => ENGLISH_MARKERS.has(word)).length
+  const englishWords = words.filter(w => ENGLISH_MARKERS.has(w)).length
   return (englishWords / words.length) > 0.4
 }
 
-export async function askHageAI(message, lang = 'both', history = []) {
-  const key = import.meta.env.VITE_GROQ_API_KEY
-  if (!key) {
-    throw new Error(
-      'VITE_GROQ_API_KEY is not set. Add it to your .env file and restart the dev server.',
+function buildContents(messages, system) {
+  const firstMsg = messages[0]?.content || ''
+  const combined = system ? `${system}\n\n${firstMsg}` : firstMsg
+  return [
+    { role: 'user', parts: [{ text: combined }] },
+    ...messages.slice(1).map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }]
+    }))
+  ]
+}
+
+async function requestAI(messages, system, langForWarning = 'both') {
+  const isDev = import.meta.env.DEV
+  let response
+
+  if (isDev) {
+    const contents = buildContents(messages, system)
+    response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents,
+          generationConfig: { maxOutputTokens: 1024, temperature: 0.7 }
+        })
+      }
     )
+  } else {
+    response = await fetch('/api/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages, system })
+    })
   }
 
-  const res = await fetch(GROQ_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${key}`,
-    },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      max_tokens: 1024,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPTS[lang] ?? SYSTEM_PROMPTS.both },
-        ...history
-          .filter((messageItem) => messageItem.role !== 'system')
-          .map(({ role, content }) => ({ role, content })),
-        { role: 'user', content: message },
-      ],
-    }),
-  })
+  const data = await response.json().catch(() => ({}))
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    const msg = err.error?.message ?? `Request failed with status ${res.status}`
+  if (!response.ok) {
+    const msg = data.error?.message ?? data.error ?? `Request failed with status ${response.status}`
     throw new Error(msg)
   }
 
-  const data = await res.json()
-  const text = data.choices?.[0]?.message?.content
-  if (!text) {
-    throw new Error('AI returned an empty response.')
-  }
+  const content = isDev
+    ? data.candidates?.[0]?.content?.parts?.[0]?.text
+    : data.content
+
+  if (!content) throw new Error('AI returned an empty response.')
 
   return {
-    content: text,
-    warning: lang === 'so' && shouldWarnSomaliQuality(text)
-      ? 'AI response may not be fully in Somali — we are working on improving this'
-      : '',
+    content,
+    warning: langForWarning === 'so' && shouldWarnSomaliQuality(content)
+      ? 'AI response may not be fully in Somali' : '',
   }
+}
+
+export async function askHageAI(message, lang = 'both', history = []) {
+  const messages = [
+    ...history
+      .filter(m => m.role !== 'system')
+      .map(({ role, content }) => ({ role, content })),
+    { role: 'user', content: message },
+  ]
+  return requestAI(messages, SYSTEM_PROMPTS[lang] ?? SYSTEM_PROMPTS.both, lang)
+}
+
+export async function askHageAICustom(message, system, langForWarning = 'both') {
+  return requestAI([{ role: 'user', content: message }], system, langForWarning)
 }

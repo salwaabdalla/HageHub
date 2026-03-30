@@ -65,6 +65,8 @@
 @media (max-width: 768px) {
   .nav-tabs-desktop { display: none; }
   .mobile-bottom-nav { display: flex; }
+  .hh-toast { bottom: 84px !important; left: 16px !important; right: 16px !important; transform: none !important; text-align: center; }
+  .hh-modal-body { max-height: 85dvh; overflow-y: auto; }
   .app-content,
   .page-content,
   .main-content {

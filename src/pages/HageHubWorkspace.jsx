@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { contributors as seededContributors } from '../data/questions'
 import { QuestionCard } from '../components/knowledge/QuestionCard'
@@ -6,13 +6,43 @@ import { AskModal } from '../components/knowledge/AskModal'
 import { fetchQuestions, insertQuestion } from '../lib/db/questions'
 import { fetchAnswerCounts, fetchAnswers, insertAnswer } from '../lib/db/answers'
 import { fetchTopContributors } from '../lib/db/contributors'
+import { fetchProjects, insertProject, joinProject, fetchUserProjects, fetchProjectMembers, fetchTopBuilders } from '../lib/db/projects'
 import { supabase } from '../lib/supabase'
-import { askHageAI } from '../lib/ai'
+import { askHageAI, askHageAICustom } from '../lib/ai'
 
 const COMMUNITY_FEED_KEY = 'hh_comments'
 const BAD_TRANSLATIONS_KEY = 'hh_bad_translations'
 const FALLBACK_TAGS = ['algorithms', 'python', 'react', 'web-dev', 'ai/ml', 'system-design', 'somalia-tech']
 function aiChatKey(user) { return `hh_ai_messages_${user?.id || 'guest'}` }
+const SOMALI_CODE_SYSTEM_PROMPT = `Adiga waxaad tahay macallin barnaamijyada ah 
+oo Soomaali ah. Sharax koodkan si fudud oo 
+Soomaali ah.
+
+Ku raac hab-raacaan:
+1. Marka hore sharax waxa koodku guud ahaan 
+   sameeyo (1-2 jumlood)
+2. Kadibna sharax khadka-khadka:
+   - Tus khadka (sida: 'line 1: def greet(name):')
+   - Sharax waxa uu sameeyo af Soomaali
+3. Ugu dambayntii: 'Koodkan waxaa loo isticmaali 
+   karaa marka...' (tusaale gaar ah)
+
+Erayada farsamada (function, variable, loop, 
+array, etc) u isticmaal Ingiriisi laakiin 
+sharax Soomaali ku dar xiga.
+
+Jawaabta ha ahaato mid fudud oo ardayga 
+cusub fahmi karo.`
+const ENGLISH_CODE_SYSTEM_PROMPT = `You are a programming teacher. Explain this code clearly for a beginner.
+
+Follow this structure:
+1. First explain what the code does overall in 1-2 sentences
+2. Then explain it line by line:
+   - Show the line (example: "line 1: def greet(name):")
+   - Explain what it does in simple English
+3. End with: "This code can be used when..." and give one practical example
+
+Keep the explanation practical, friendly, and easy to follow.`
 
 const topNavItems = [
   { label: 'Ask', icon: '🏠', to: '/home', page: 'dashboard' },
@@ -133,6 +163,20 @@ const statusMeta = {
   complete: { label: 'Completed', color: '#1a6b4a', bg: '#e8f5ee' },
 }
 
+const STATUS_KEY_MAP = { 'Open Idea': 'idea', 'Building Now': 'building', 'Completed': 'complete', idea: 'idea', building: 'building', complete: 'complete' }
+function normalizeProject(row) {
+  return {
+    ...row,
+    status: STATUS_KEY_MAP[row.status] || 'idea',
+    roles: row.looking_for || [],
+    rolesOpen: row.looking_for || [],
+    tags: row.tags || [],
+    members: [],
+    members_count: row.members_count || 1,
+    impact: row.impact_area || '',
+  }
+}
+
 const stories = [
   ['#0f3d82', 'AA', 'A', 'Abdi Axmed', 'Mar 2024', 'From Mogadishu to Google: my 5-year journey', "I learned to code on a borrowed laptop in a cafe with spotty internet. Here's what nobody tells you about making it in tech from Somalia.", 'Career'],
   ['#1a5db5', 'HM', 'H', 'Hodan Muuse', 'Feb 2024', 'On being Somali in a room full of engineers', 'The subtle moments that make you question if you belong and why building this community changes everything.', 'Identity'],
@@ -239,7 +283,20 @@ function HageHubWorkspace({ user, onLogout }) {
   )
   const [workTab, setWorkTab] = useState('all')
   const [buildTab, setBuildTab] = useState('all')
-  const [joinedProjects, setJoinedProjects] = useState(() => new Set())
+  const [projects, setProjects] = useState([])
+  const [joinedProjects, setJoinedProjects] = useState([])
+  const [activeProject, setActiveProject] = useState(null)
+  const [activeProjectMembers, setActiveProjectMembers] = useState([])
+  const [projectMessages, setProjectMessages] = useState([])
+  const [chatInput, setChatInput] = useState('')
+  const chatEndRef = useRef(null)
+  const [projectComments, setProjectComments] = useState({})
+  const [projectCommentInput, setProjectCommentInput] = useState('')
+  const [topBuilders, setTopBuilders] = useState([])
+  const [showProposeModal, setShowProposeModal] = useState(false)
+  const [proposeForm, setProposeForm] = useState({ title: '', description: '', category: '', tags: '', lookingFor: '', impactArea: '', status: 'Open Idea', githubUrl: '' })
+  const [proposeLoading, setProposeLoading] = useState(false)
+  const [toastMsg, setToastMsg] = useState('')
   const [profileTab, setProfileTab] = useState('activity')
   const [showAskModal, setShowAskModal] = useState(false)
   const [showMoreDrawer, setShowMoreDrawer] = useState(false)
@@ -256,10 +313,17 @@ function HageHubWorkspace({ user, onLogout }) {
   }, [user?.id])
   const [aiInput, setAiInput] = useState('')
   const [aiLanguage, setAiLanguage] = useState('both')
+  const [aiTab, setAiTab] = useState('chat')
   const [aiLoading, setAiLoading] = useState(false)
+  const [codeInput, setCodeInput] = useState('')
+  const [codeLanguage, setCodeLanguage] = useState('Python')
+  const [codeExplainLoading, setCodeExplainLoading] = useState(false)
+  const [codeExplanation, setCodeExplanation] = useState(null)
+  const [codeExplainNotice, setCodeExplainNotice] = useState('')
   const [threadAiAnswers, setThreadAiAnswers] = useState({})
   const [threadAiLoading, setThreadAiLoading] = useState(false)
   const [aiExpanded, setAiExpanded] = useState(false)
+  const [showAI, setShowAI] = useState(false)
   const [messageTranslations, setMessageTranslations] = useState({})
   const [translatingId, setTranslatingId] = useState('')
   const [threadReply, setThreadReply] = useState('')
@@ -400,15 +464,185 @@ function HageHubWorkspace({ user, onLogout }) {
   }, [activeThreadId])
 
   useEffect(() => {
+    setCodeExplainNotice('')
+  }, [codeExplanation])
+
+  useEffect(() => {
     setShowMoreDrawer(false)
   }, [pathname])
-  // Load AI answer when a thread opens.
+  // Reset AI visibility when switching threads
   useEffect(() => {
-    if (!activeThreadId || !activeThread) return
+    setShowAI(false)
+    setAiExpanded(false)
+  }, [activeThreadId])
+
+  // Fetch projects from Supabase
+  useEffect(() => {
+    fetchProjects()
+      .then((rows) => setProjects(rows.map(normalizeProject)))
+      .catch(console.error)
+    fetchTopBuilders().then(setTopBuilders).catch(console.error)
+    if (user?.id) {
+      fetchUserProjects(user.id).then(setJoinedProjects).catch(console.error)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
+
+  // Reload members whenever the active project changes
+  useEffect(() => {
+    if (!activeProject?.id) return
+    setActiveProjectMembers([])
+    supabase
+      .from('project_members')
+      .select('user_id, user_name, joined_at')
+      .eq('project_id', activeProject.id)
+      .then(({ data }) => {
+        setActiveProjectMembers(data || [])
+      })
+  }, [activeProject?.id])
+
+  // Real-time chat: fetch history + subscribe on project open
+  useEffect(() => {
+    if (!activeProject?.id) return
+    setProjectMessages([])
+    setChatInput('')
+
+    supabase
+      .from('project_messages')
+      .select('*')
+      .eq('project_id', activeProject.id)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => {
+        if (data) setProjectMessages(data)
+        setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+      })
+
+    const channel = supabase
+      .channel('project-chat-' + activeProject.id)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'project_messages',
+        filter: 'project_id=eq.' + activeProject.id,
+      }, (payload) => {
+        setProjectMessages((prev) => [...prev, payload.new])
+        setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+      })
+      .subscribe()
+
+    return () => supabase.removeChannel(channel)
+  }, [activeProject?.id])
+
+  function showToast(msg) {
+    setToastMsg(msg)
+    setTimeout(() => setToastMsg(''), 4000)
+  }
+
+  async function handleProjectClick(project) {
+    setActiveProject(project)
+    setProjectCommentInput('')
+    const members = await fetchProjectMembers(project.id).catch(() => [])
+    setActiveProjectMembers(members)
+  }
+
+  async function handleJoinProject(project) {
+    try {
+      await joinProject(project.id, user.id, user?.user_metadata?.name || user?.name || 'Builder')
+      const userName = user?.user_metadata?.name || user?.name || 'Builder'
+      setJoinedProjects((prev) => [...prev, project.id])
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.id === project.id ? { ...p, members_count: (p.members_count || 1) + 1 } : p,
+        ),
+      )
+      setActiveProjectMembers((prev) => [...prev, { user_id: user.id, user_name: userName, joined_at: new Date().toISOString() }])
+      showToast("You joined! Connect with the team in the Connect tab or wait for the creator to reach out.")
+    } catch (err) {
+      console.error('Failed to join project:', err)
+    }
+  }
+
+  async function sendMessage() {
+    const text = chatInput.trim()
+    if (!text || !user || !activeProject) return
+    setChatInput('')
+    await supabase.from('project_messages').insert({
+      project_id: activeProject.id,
+      user_id: user.id,
+      user_name: user?.user_metadata?.name || user?.name || 'Builder',
+      message: text,
+    })
+  }
+
+  async function handleMarkAsBuilding() {
+    if (!activeProject || !user || user.id !== activeProject.creator_id) return
+    const { error } = await supabase
+      .from('projects')
+      .update({ status: 'Building Now' })
+      .eq('id', activeProject.id)
+    if (!error) {
+      setActiveProject((prev) => ({ ...prev, status: 'building' }))
+      setProjects((prev) => prev.map((p) => p.id === activeProject.id ? { ...p, status: 'building' } : p))
+      showToast('Status updated to Building Now!')
+    }
+  }
+
+  function handleAddProjectComment(projectId) {
+    const text = projectCommentInput.trim()
+    if (!text) return
+    const comment = {
+      id: Date.now(),
+      text,
+      author: user?.user_metadata?.name || user?.name || 'Builder',
+      at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    }
+    setProjectComments((prev) => ({ ...prev, [projectId]: [...(prev[projectId] || []), comment] }))
+    setProjectCommentInput('')
+  }
+
+  async function handleProposeProject(e) {
+    e.preventDefault()
+    if (!user?.id) return
+    setProposeLoading(true)
+    try {
+      const row = await insertProject({
+        title: proposeForm.title,
+        description: proposeForm.description,
+        category: proposeForm.category,
+        tags: proposeForm.tags.split(',').map((t) => t.trim()).filter(Boolean),
+        looking_for: proposeForm.lookingFor.split(',').map((r) => r.trim()).filter(Boolean),
+        impact_area: proposeForm.impactArea,
+        github_url: proposeForm.githubUrl || null,
+        creator_id: user.id,
+        creator_name: user?.user_metadata?.name || user?.name || 'Community member',
+        status: proposeForm.status,
+        members_count: 1,
+      })
+      await supabase.from('project_members').insert([{
+        project_id: row.id,
+        user_id: user.id,
+        user_name: user?.user_metadata?.name || user?.name || 'Community member',
+      }])
+      setProjects((prev) => [normalizeProject(row), ...prev])
+      setJoinedProjects((prev) => [...prev, row.id])
+      setProposeForm({ title: '', description: '', category: '', tags: '', lookingFor: '', impactArea: '', status: 'Open Idea', githubUrl: '' })
+      setShowProposeModal(false)
+      showToast('Project posted!')
+    } catch (err) {
+      console.error('Failed to post project:', err)
+    } finally {
+      setProposeLoading(false)
+    }
+  }
+
+  function handleGetAI() {
+    setShowAI(true)
+    const thread = questions.find(q => q.id === activeThreadId)
+    if (!activeThreadId || !thread) return
     if (threadAiAnswers[activeThreadId]) return
     setThreadAiLoading(true)
-    const prompt = activeThread.title + (activeThread.body ? '\n\n' + activeThread.body : '')
-    const threadLang = activeThread.lang === 'so' ? 'so' : activeThread.lang === 'en' ? 'en' : 'both'
+    const prompt = thread.title + (thread.body ? '\n\n' + thread.body : '')
+    const threadLang = thread.lang === 'so' ? 'so' : thread.lang === 'en' ? 'en' : 'both'
     askHageAI(prompt, threadLang)
       .then((answer) => {
         setThreadAiAnswers((prev) => ({ ...prev, [activeThreadId]: answer }))
@@ -423,8 +657,7 @@ function HageHubWorkspace({ user, onLogout }) {
         }))
       })
       .finally(() => setThreadAiLoading(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeThreadId, activeThread])
+  }
 
   async function handleLogout() {
     await onLogout()
@@ -626,6 +859,57 @@ function HageHubWorkspace({ user, onLogout }) {
       }))
     } finally {
       setTranslatingId('')
+    }
+  }
+
+  async function explainCode(outputLang) {
+    if (!codeInput.trim() || codeExplainLoading) return
+    setCodeExplainLoading(true)
+    setCodeExplainNotice('')
+    try {
+      const prompt = `Language: ${codeLanguage}\n\nCode:\n${codeInput.trim()}`
+      const reply = await askHageAICustom(
+        prompt,
+        outputLang === 'so' ? SOMALI_CODE_SYSTEM_PROMPT : ENGLISH_CODE_SYSTEM_PROMPT,
+        outputLang,
+      )
+      setCodeExplanation({
+        language: codeLanguage,
+        outputLang,
+        code: codeInput.trim(),
+        content: reply.content,
+        warning: reply.warning,
+      })
+    } catch (err) {
+      setCodeExplanation({
+        language: codeLanguage,
+        outputLang,
+        code: codeInput.trim(),
+        content: `Could not explain this code right now. ${err.message}`,
+        warning: '',
+      })
+    } finally {
+      setCodeExplainLoading(false)
+    }
+  }
+
+  async function copyCodeExplanation(mode = 'copy') {
+    if (!codeExplanation) return
+    const shareText = `Somali Code Explainer
+
+Language: ${codeExplanation.language}
+Output: ${codeExplanation.outputLang === 'so' ? 'Somali' : 'English'}
+
+Code:
+${codeExplanation.code}
+
+Explanation:
+${codeExplanation.content}`
+    try {
+      await navigator.clipboard.writeText(mode === 'share' ? shareText : codeExplanation.content)
+      setCodeExplainNotice(mode === 'share' ? 'Share text copied.' : 'Explanation copied.')
+    } catch {
+      setCodeExplainNotice('Could not copy right now.')
     }
   }
 
@@ -916,6 +1200,7 @@ function HageHubWorkspace({ user, onLogout }) {
               </div>
 
               {/* AI Answer */}
+              {showAI ? (
               <div className="mt-4 rounded-[24px] bg-[#0f3d82] p-6 text-white">
                 <div className="flex items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#6aaae8]/20 text-xs font-bold text-[#6aaae8]">AI</div>
@@ -1000,6 +1285,31 @@ function HageHubWorkspace({ user, onLogout }) {
                   </div>
                 ) : null}
               </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleGetAI}
+                  className="w-full sm:w-auto"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    padding: '12px 20px',
+                    background: '#0f3d82',
+                    border: 'none',
+                    borderRadius: 12,
+                    color: 'white',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: 'DM Sans, sans-serif',
+                    margin: '16px 0',
+                  }}
+                >
+                  🤖 Get AI suggested answer
+                </button>
+              )}
 
               {/* Community answers */}
               <div className="mt-6">
@@ -1153,72 +1463,150 @@ function HageHubWorkspace({ user, onLogout }) {
               <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[#0f3d82] text-white">AI</div>
               <div className="flex-1">
                 <p className="font-display text-3xl text-slate-950">Hage AI Assistant</p>
-                <p className="text-sm text-slate-400">Ask anything in Somali or English.</p>
+                <p className="text-sm text-slate-400">Ask anything in Somali or English, or paste code for a guided explanation.</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {[
-                  ['both', 'Both'],
-                  ['en', 'English'],
-                  ['so', 'Somali'],
+                  ['chat', 'Ask Hage AI'],
+                  ['code', 'Explain Code'],
                 ].map(([value, label]) => (
-                  <button key={value} type="button" onClick={() => setAiLanguage(value)} className={`rounded-full px-4 py-2 text-sm font-medium ${aiLanguage === value ? 'bg-[#4189DD] text-white' : 'border border-[#dce6f5] bg-white text-slate-500'}`}>
+                  <button key={value} type="button" onClick={() => setAiTab(value)} className={`rounded-full px-4 py-2 text-sm font-medium ${aiTab === value ? 'bg-[#4189DD] text-white' : 'border border-[#dce6f5] bg-white text-slate-500'}`}>
                     {label}
                   </button>
                 ))}
               </div>
             </div>
-            <div className="flex min-h-[420px] flex-col gap-4 px-6 py-6">
-              <div className="flex-1 space-y-4 overflow-y-auto">
-                {aiMessages.map((message) => (
-                  <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[75%] rounded-[16px] px-4 py-3 text-sm leading-7 ${message.role === 'user' ? 'bg-[#4189DD] text-white' : 'border border-[#dce6f5] bg-[#f4f7fb] text-slate-600'}`}>
-                      <div className="whitespace-pre-wrap">{message.content}</div>
-                      {message.warning ? <p className="mt-3 text-xs text-amber-600">{message.warning}</p> : null}
-                      {message.role === 'assistant' ? (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => translateAiResponse(message.id, message.content, aiLanguage === 'so' ? 'en' : 'so')}
-                            className="rounded-full border border-[#dce6f5] bg-white px-3 py-1 text-xs font-medium text-slate-600"
-                          >
-                            {translatingId === message.id ? 'Translating...' : 'Translate'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => reportBadTranslation({ source: 'ai-chat', content: message.content, warning: message.warning })}
-                            className="rounded-full border border-[#dce6f5] bg-white px-3 py-1 text-xs font-medium text-slate-600"
-                          >
-                            Report bad translation
-                          </button>
-                        </div>
-                      ) : null}
-                      {messageTranslations[message.id] ? (
-                        <div className="mt-3 rounded-[12px] border border-[#dce6f5] bg-white px-3 py-2 text-xs text-slate-600">
-                          <p className="font-semibold text-slate-700">{messageTranslations[message.id].targetLang === 'so' ? 'Somali translation' : 'English translation'}</p>
-                          <p className="mt-1 whitespace-pre-wrap">{messageTranslations[message.id].content}</p>
-                          {messageTranslations[message.id].warning ? <p className="mt-2 text-amber-600">{messageTranslations[message.id].warning}</p> : null}
-                        </div>
-                      ) : null}
+            {aiTab === 'chat' ? (
+              <div className="flex min-h-[420px] flex-col gap-4 px-6 py-6">
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    ['both', 'Both'],
+                    ['en', 'English'],
+                    ['so', 'Somali'],
+                  ].map(([value, label]) => (
+                    <button key={value} type="button" onClick={() => setAiLanguage(value)} className={`rounded-full px-4 py-2 text-sm font-medium ${aiLanguage === value ? 'bg-[#4189DD] text-white' : 'border border-[#dce6f5] bg-white text-slate-500'}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex-1 space-y-4 overflow-y-auto">
+                  {aiMessages.map((message) => (
+                    <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[75%] rounded-[16px] px-4 py-3 text-sm leading-7 ${message.role === 'user' ? 'bg-[#4189DD] text-white' : 'border border-[#dce6f5] bg-[#f4f7fb] text-slate-600'}`}>
+                        <div className="whitespace-pre-wrap">{message.content}</div>
+                        {message.warning ? <p className="mt-3 text-xs text-amber-600">{message.warning}</p> : null}
+                        {message.role === 'assistant' ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => translateAiResponse(message.id, message.content, aiLanguage === 'so' ? 'en' : 'so')}
+                              className="rounded-full border border-[#dce6f5] bg-white px-3 py-1 text-xs font-medium text-slate-600"
+                            >
+                              {translatingId === message.id ? 'Translating...' : 'Translate'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => reportBadTranslation({ source: 'ai-chat', content: message.content, warning: message.warning })}
+                              className="rounded-full border border-[#dce6f5] bg-white px-3 py-1 text-xs font-medium text-slate-600"
+                            >
+                              Report bad translation
+                            </button>
+                          </div>
+                        ) : null}
+                        {messageTranslations[message.id] ? (
+                          <div className="mt-3 rounded-[12px] border border-[#dce6f5] bg-white px-3 py-2 text-xs text-slate-600">
+                            <p className="font-semibold text-slate-700">{messageTranslations[message.id].targetLang === 'so' ? 'Somali translation' : 'English translation'}</p>
+                            <p className="mt-1 whitespace-pre-wrap">{messageTranslations[message.id].content}</p>
+                            {messageTranslations[message.id].warning ? <p className="mt-2 text-amber-600">{messageTranslations[message.id].warning}</p> : null}
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
-                ))}
-                {aiLoading && (
-                  <div className="flex justify-start">
-                    <div className="flex items-center gap-1.5 rounded-[16px] border border-[#dce6f5] bg-[#f4f7fb] px-4 py-3">
-                      <span className="h-2 w-2 animate-bounce rounded-full bg-[#4189DD] [animation-delay:0ms]" />
-                      <span className="h-2 w-2 animate-bounce rounded-full bg-[#4189DD] [animation-delay:150ms]" />
-                      <span className="h-2 w-2 animate-bounce rounded-full bg-[#4189DD] [animation-delay:300ms]" />
+                  ))}
+                  {aiLoading && (
+                    <div className="flex justify-start">
+                      <div className="flex items-center gap-1.5 rounded-[16px] border border-[#dce6f5] bg-[#f4f7fb] px-4 py-3">
+                        <span className="h-2 w-2 animate-bounce rounded-full bg-[#4189DD] [animation-delay:0ms]" />
+                        <span className="h-2 w-2 animate-bounce rounded-full bg-[#4189DD] [animation-delay:150ms]" />
+                        <span className="h-2 w-2 animate-bounce rounded-full bg-[#4189DD] [animation-delay:300ms]" />
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
+                <form onSubmit={sendAi} className="flex gap-3">
+                  <textarea rows={2} value={aiInput} onChange={(event) => setAiInput(event.target.value)} placeholder="Ask a CS question in Somali or English..." className="min-h-[52px] flex-1 resize-none rounded-[12px] border border-[#dce6f5] bg-[#f4f7fb] px-4 py-3 text-sm outline-none focus:border-[#4189DD]" />
+                  <button type="submit" disabled={aiLoading} className="h-[52px] rounded-[12px] bg-[#4189DD] px-5 text-sm font-medium text-white transition disabled:opacity-50">
+                    {aiLoading ? '...' : 'Send'}
+                  </button>
+                </form>
               </div>
-              <form onSubmit={sendAi} className="flex gap-3">
-                <textarea rows={2} value={aiInput} onChange={(event) => setAiInput(event.target.value)} placeholder="Ask a CS question in Somali or English..." className="min-h-[52px] flex-1 resize-none rounded-[12px] border border-[#dce6f5] bg-[#f4f7fb] px-4 py-3 text-sm outline-none focus:border-[#4189DD]" />
-                <button type="submit" disabled={aiLoading} className="h-[52px] rounded-[12px] bg-[#4189DD] px-5 text-sm font-medium text-white transition disabled:opacity-50">
-                  {aiLoading ? '...' : 'Send'}
-                </button>
-              </form>
-            </div>
+            ) : (
+              <div className="px-6 py-6">
+                <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
+                  <div className="space-y-4">
+                    <textarea
+                      value={codeInput}
+                      onChange={(event) => setCodeInput(event.target.value)}
+                      placeholder="Paste any code here - Python, JavaScript, HTML, anything..."
+                      style={{
+                        width: '100%',
+                        minHeight: 180,
+                        fontFamily: 'monospace',
+                        fontSize: 13,
+                        padding: 16,
+                        border: '1.5px solid #dce6f5',
+                        borderRadius: 12,
+                        background: '#0c1220',
+                        color: '#a8d8a8',
+                        resize: 'vertical',
+                        outline: 'none',
+                      }}
+                    />
+                    <select value={codeLanguage} onChange={(event) => setCodeLanguage(event.target.value)} className="w-full rounded-[12px] border border-[#dce6f5] bg-white px-4 py-3 text-sm text-slate-700 outline-none">
+                      {['Python', 'JavaScript', 'HTML/CSS', 'Java', 'C++', 'SQL', 'Other'].map((option) => (
+                        <option key={option}>{option}</option>
+                      ))}
+                    </select>
+                    <div className="flex flex-wrap gap-3">
+                      <button type="button" onClick={() => explainCode('so')} disabled={codeExplainLoading} className="rounded-[12px] bg-[#4189DD] px-5 py-3 text-sm font-medium text-white transition disabled:opacity-50">
+                        🇸🇴 Explain in Somali
+                      </button>
+                      <button type="button" onClick={() => explainCode('en')} disabled={codeExplainLoading} className="rounded-[12px] border border-[#dce6f5] bg-white px-5 py-3 text-sm font-medium text-slate-600 transition disabled:opacity-50">
+                        🇬🇧 Explain in English
+                      </button>
+                    </div>
+                  </div>
+                  <div className="rounded-[22px] border border-[#193150] bg-[#0f1d35] p-5 text-white shadow-[0_16px_40px_rgba(15,29,53,0.24)]">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-[#17345e] px-3 py-1 text-[11px] font-semibold text-[#c8dff7]">
+                        {codeExplanation?.outputLang === 'en' ? '🇬🇧 English Explanation' : '🇸🇴 Somali Explanation'}
+                      </span>
+                      {codeExplanation?.language ? (
+                        <span className="rounded-full border border-[#2f4d73] px-3 py-1 text-[11px] font-medium text-white/75">
+                          {codeExplanation.language}
+                        </span>
+                      ) : null}
+                    </div>
+                    <pre className="mt-4 overflow-x-auto rounded-[16px] border border-[#1c3559] bg-[#09111f] p-4 text-xs leading-6 text-[#a8d8a8]">
+                      <code>{codeExplanation?.code || '// Your code will appear here before the explanation.'}</code>
+                    </pre>
+                    <div className="mt-4 whitespace-pre-wrap text-sm leading-7 text-white/85">
+                      {codeExplainLoading ? 'Explaining code...' : (codeExplanation?.content || 'Choose a language and click one of the explain buttons to get a guided walkthrough.')}
+                    </div>
+                    {codeExplanation?.warning ? <p className="mt-3 text-xs text-amber-200">{codeExplanation.warning}</p> : null}
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      <button type="button" onClick={() => copyCodeExplanation('copy')} disabled={!codeExplanation} className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white disabled:opacity-40">
+                        Copy explanation
+                      </button>
+                      <button type="button" onClick={() => copyCodeExplanation('share')} disabled={!codeExplanation} className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white disabled:opacity-40">
+                        Share
+                      </button>
+                    </div>
+                    {codeExplainNotice ? <p className="mt-3 text-xs text-[#c8dff7]">{codeExplainNotice}</p> : null}
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
         ) : null}
 
@@ -1329,9 +1717,9 @@ function HageHubWorkspace({ user, onLogout }) {
               {/* Stats bar */}
               <div className="mb-6 flex flex-wrap gap-4">
                 {[
-                  ['6', 'active projects'],
-                  ['12+', 'builders'],
-                  ['4', 'Somalia-focused'],
+                  [String(projects.length || 0), 'active projects'],
+                  [String(projects.reduce((s, p) => s + (p.members_count || 0), 0)), 'builders'],
+                  [String(projects.filter((p) => p.impact_area?.toLowerCase().includes('somalia')).length), 'Somalia-focused'],
                 ].map(([num, label]) => (
                   <div key={label} className="flex items-baseline gap-1.5">
                     <span className="font-display text-2xl text-[#4189DD]">{num}</span>
@@ -1355,8 +1743,8 @@ function HageHubWorkspace({ user, onLogout }) {
                     className={`rounded-full px-4 py-2 text-sm font-medium transition ${buildTab === value ? 'bg-[#4189DD] text-white shadow-[0_4px_12px_rgba(65,137,221,0.25)]' : 'border border-[#dce6f5] bg-white text-slate-500 hover:border-[#c8dff7]'}`}
                   >
                     {label}
-                    {value === 'mine' && joinedProjects.size > 0 && (
-                      <span className="ml-1.5 rounded-full bg-white/25 px-1.5 py-0.5 text-[10px] font-bold">{joinedProjects.size}</span>
+                    {value === 'mine' && joinedProjects.length > 0 && (
+                      <span className="ml-1.5 rounded-full bg-white/25 px-1.5 py-0.5 text-[10px] font-bold">{joinedProjects.length}</span>
                     )}
                   </button>
                 ))}
@@ -1364,18 +1752,19 @@ function HageHubWorkspace({ user, onLogout }) {
 
               {/* Project grid */}
               <div className="grid gap-4 md:grid-cols-2">
-                {buildProjects
+                {projects
                   .filter((p) => {
                     if (buildTab === 'idea') return p.status === 'idea'
                     if (buildTab === 'building') return p.status === 'building'
-                    if (buildTab === 'mine') return joinedProjects.has(p.id)
+                    if (buildTab === 'mine') return joinedProjects.includes(p.id)
                     return true
                   })
                   .map((project) => {
-                    const sm = statusMeta[project.status]
-                    const joined = joinedProjects.has(project.id)
+                    const sm = statusMeta[project.status] || statusMeta.idea
+                    const joined = joinedProjects.includes(project.id)
+                    const memberCount = project.members?.length || project.members_count || 0
                     return (
-                      <article key={project.id} className={`flex flex-col rounded-[20px] border bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-[0_10px_28px_rgba(65,137,221,0.08)] ${joined ? 'border-[#4189DD]' : 'border-[#dce6f5]'}`}>
+                      <article key={project.id} onClick={() => handleProjectClick(project)} className={`flex flex-col rounded-[20px] border bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-[0_10px_28px_rgba(65,137,221,0.08)] cursor-pointer ${joined ? 'border-[#4189DD]' : 'border-[#dce6f5]'}`}>
                         {/* Status + impact row */}
                         <div className="flex items-center justify-between gap-2 mb-3">
                           <span className="rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: sm.color, backgroundColor: sm.bg }}>
@@ -1414,35 +1803,41 @@ function HageHubWorkspace({ user, onLogout }) {
                         <div className="mt-5 flex items-center justify-between gap-3 border-t border-[#f4f7fb] pt-4">
                           <div className="flex items-center gap-2">
                             <div className="flex -space-x-1.5">
-                              {project.members.slice(0, 4).map(([init, bg]) => (
+                              {(project.members || []).slice(0, 4).map(([init, bg]) => (
                                 <div key={init} className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-white text-[9px] font-bold text-white" style={{ backgroundColor: bg }}>{init}</div>
                               ))}
-                              {project.members.length === 0 && (
+                              {memberCount === 0 && (
                                 <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-dashed border-[#dce6f5] text-[9px] text-slate-400">+</div>
                               )}
                             </div>
                             <span className="text-xs text-slate-400">
-                              {project.members.length === 0 ? 'Be the first' : `${project.members.length} builder${project.members.length === 1 ? '' : 's'}`}
+                              {memberCount === 0 ? 'Be the first' : `${memberCount} builder${memberCount === 1 ? '' : 's'}`}
                             </span>
                           </div>
                           <button
                             type="button"
-                            onClick={() => setJoinedProjects((prev) => {
-                              const next = new Set(prev)
-                              joined ? next.delete(project.id) : next.add(project.id)
-                              return next
-                            })}
+                            onClick={(e) => { e.stopPropagation(); if (!joined) handleJoinProject(project) }}
                             className={`rounded-full px-4 py-2 text-sm font-medium transition ${joined ? 'bg-[#eaf2fd] text-[#1a5db5]' : 'bg-[#4189DD] text-white hover:bg-[#1a5db5]'}`}
                           >
                             {joined ? '✓ Joined' : 'Join Project'}
                           </button>
                         </div>
+                        {joined && (
+                          <div className="mt-3 flex items-center gap-2 border-t border-[#f4f7fb] pt-3">
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#4189DD] text-[9px] font-bold text-white">
+                              {initials(user?.user_metadata?.name || user?.name || 'You')}
+                            </div>
+                            <span className="text-xs text-[#1a5db5] font-medium">
+                              You{memberCount > 1 ? ` + ${memberCount - 1} other${memberCount - 1 === 1 ? '' : 's'}` : ' — be the first!'}
+                            </span>
+                          </div>
+                        )}
                       </article>
                     )
                   })}
 
                 {/* Empty state for "Joined" tab */}
-                {buildTab === 'mine' && joinedProjects.size === 0 && (
+                {buildTab === 'mine' && joinedProjects.length === 0 && (
                   <div className="col-span-2 rounded-[20px] border border-dashed border-[#dce6f5] bg-white p-10 text-center">
                     <p className="font-display text-2xl text-slate-400">You have not joined a project yet.</p>
                     <p className="mt-2 text-sm text-slate-400">Browse the list and hit "Join Project" — no experience required.</p>
@@ -1450,6 +1845,27 @@ function HageHubWorkspace({ user, onLogout }) {
                   </div>
                 )}
               </div>
+
+              {/* Top Builders leaderboard */}
+              {topBuilders.length > 0 && (
+                <div className="mt-8 rounded-[20px] border border-[#dce6f5] bg-white p-5">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">Top Builders</p>
+                  <div className="mt-4 space-y-3">
+                    {topBuilders.map((builder, i) => (
+                      <div key={builder.user_name + i} className="flex items-center gap-3">
+                        <span className="w-4 text-center text-xs font-bold text-slate-300">{i + 1}</span>
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#eaf2fd] text-xs font-bold text-[#1a5db5]">
+                          {initials(builder.user_name)}
+                        </div>
+                        <span className="flex-1 text-sm font-medium text-slate-700">{builder.user_name}</span>
+                        <span className="rounded-full bg-[#f4f7fb] px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+                          {builder.count} project{builder.count === 1 ? '' : 's'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Sidebar */}
@@ -1459,7 +1875,7 @@ function HageHubWorkspace({ user, onLogout }) {
                 <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#6aaae8]">Got an idea?</p>
                 <h3 className="mt-2 font-display text-3xl">Start a project.</h3>
                 <p className="mt-2 text-sm leading-7 text-white/70">You don't need a team yet. Post the idea and the right people will find you.</p>
-                <button type="button" className="mt-4 w-full rounded-full bg-[#4189DD] py-3 text-sm font-medium text-white transition hover:bg-[#6aaae8]">
+                <button type="button" onClick={() => setShowProposeModal(true)} className="mt-4 w-full rounded-full bg-[#4189DD] py-3 text-sm font-medium text-white transition hover:bg-[#6aaae8]">
                   + Propose a Project
                 </button>
               </div>
@@ -1903,6 +2319,303 @@ function HageHubWorkspace({ user, onLogout }) {
         onSubmit={handlePostQuestion}
         user={user}
       />
+
+      {/* Propose a Project Modal */}
+      {showProposeModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
+          onClick={(e) => e.target === e.currentTarget && setShowProposeModal(false)}
+        >
+          <div className="hh-modal-body w-full max-w-lg rounded-[24px] bg-white p-6 shadow-2xl">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="font-display text-2xl text-slate-950">Propose a Project</h2>
+              <button type="button" onClick={() => setShowProposeModal(false)} className="text-slate-400 hover:text-slate-600 text-xl leading-none">×</button>
+            </div>
+            <form onSubmit={handleProposeProject} className="space-y-4">
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Project Title *</label>
+                <input
+                  required
+                  value={proposeForm.title}
+                  onChange={(e) => setProposeForm((f) => ({ ...f, title: e.target.value }))}
+                  placeholder="e.g. Somali AI Tutor"
+                  className="w-full rounded-[12px] border border-[#dce6f5] px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-[#4189DD]"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Description *</label>
+                <textarea
+                  required
+                  rows={3}
+                  value={proposeForm.description}
+                  onChange={(e) => setProposeForm((f) => ({ ...f, description: e.target.value }))}
+                  placeholder="What are you building and why does it matter?"
+                  className="w-full rounded-[12px] border border-[#dce6f5] px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-[#4189DD] resize-none"
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Category</label>
+                  <input
+                    value={proposeForm.category}
+                    onChange={(e) => setProposeForm((f) => ({ ...f, category: e.target.value }))}
+                    placeholder="e.g. AI, Web, Mobile"
+                    className="w-full rounded-[12px] border border-[#dce6f5] px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-[#4189DD]"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Impact Area</label>
+                  <input
+                    value={proposeForm.impactArea}
+                    onChange={(e) => setProposeForm((f) => ({ ...f, impactArea: e.target.value }))}
+                    placeholder="e.g. Somalia, Global"
+                    className="w-full rounded-[12px] border border-[#dce6f5] px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-[#4189DD]"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Tags (comma-separated)</label>
+                <input
+                  value={proposeForm.tags}
+                  onChange={(e) => setProposeForm((f) => ({ ...f, tags: e.target.value }))}
+                  placeholder="AI, Education, Somali"
+                  className="w-full rounded-[12px] border border-[#dce6f5] px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-[#4189DD]"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Roles Needed (comma-separated)</label>
+                <input
+                  value={proposeForm.lookingFor}
+                  onChange={(e) => setProposeForm((f) => ({ ...f, lookingFor: e.target.value }))}
+                  placeholder="Frontend, AI/ML, Designer"
+                  className="w-full rounded-[12px] border border-[#dce6f5] px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-[#4189DD]"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Status</label>
+                <select
+                  value={proposeForm.status}
+                  onChange={(e) => setProposeForm((f) => ({ ...f, status: e.target.value }))}
+                  className="w-full rounded-[12px] border border-[#dce6f5] px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-[#4189DD] bg-white"
+                >
+                  <option value="Open Idea">Open Idea</option>
+                  <option value="Building Now">Building Now</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">GitHub URL (optional)</label>
+                <input
+                  type="url"
+                  value={proposeForm.githubUrl}
+                  onChange={(e) => setProposeForm((f) => ({ ...f, githubUrl: e.target.value }))}
+                  placeholder="https://github.com/your-repo"
+                  className="w-full rounded-[12px] border border-[#dce6f5] px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-[#4189DD]"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={proposeLoading}
+                className="w-full rounded-full bg-[#0f3d82] py-3 text-sm font-semibold text-white transition hover:bg-[#1a5db5] disabled:opacity-60"
+              >
+                {proposeLoading ? 'Posting...' : 'Post Project'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Project Detail Panel */}
+      {activeProject && (
+        <div
+          className="fixed inset-0 z-50 flex items-stretch justify-end"
+          style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
+          onClick={(e) => e.target === e.currentTarget && setActiveProject(null)}
+        >
+          <div
+            className="flex w-full flex-col bg-white shadow-2xl sm:max-w-lg overflow-y-auto"
+            style={{ animation: 'slideInRight 0.22s ease' }}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3 border-b border-[#f4f7fb] p-5">
+              <div className="flex-1 min-w-0">
+                {(() => {
+                  const sm = statusMeta[activeProject.status] || statusMeta.idea
+                  return (
+                    <span className="rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: sm.color, backgroundColor: sm.bg }}>
+                      {sm.label}
+                    </span>
+                  )
+                })()}
+                <h2 className="mt-2 font-display text-2xl leading-snug text-slate-950">{activeProject.title}</h2>
+                <p className="mt-1 text-xs text-slate-400">
+                  by {activeProject.creator_name || 'Community member'}
+                  {activeProject.created_at ? ` · ${new Date(activeProject.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                </p>
+              </div>
+              <button type="button" onClick={() => setActiveProject(null)} className="shrink-0 rounded-full p-2 text-slate-400 hover:bg-[#f4f7fb] hover:text-slate-600 text-xl leading-none">×</button>
+            </div>
+
+            <div className="flex-1 space-y-5 overflow-y-auto p-5">
+              {/* Description */}
+              <p className="text-sm leading-7 text-slate-600">{activeProject.description}</p>
+
+              {/* GitHub */}
+              {activeProject.github_url && (
+                <a href={activeProject.github_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-[10px] border border-[#dce6f5] px-4 py-2 text-sm font-medium text-slate-700 hover:border-[#4189DD] hover:text-[#4189DD]">
+                  <span>⎇</span> View on GitHub
+                </a>
+              )}
+
+              {/* Tags */}
+              {activeProject.tags?.length > 0 && (
+                <div>
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Tags</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {activeProject.tags.map((tag) => (
+                      <span key={tag} className="rounded-full border border-[#dce6f5] bg-[#f4f7fb] px-2.5 py-0.5 text-[10px] font-medium text-slate-500">#{tag}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Roles */}
+              {activeProject.roles?.length > 0 && (
+                <div>
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Roles Needed</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {activeProject.roles.map((role) => (
+                      <span key={role} className="rounded-full bg-[#eaf2fd] px-3 py-1 text-xs font-medium text-[#1a5db5]">{role}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Members */}
+              <div>
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  Members ({activeProjectMembers.length || activeProject.members_count || 0})
+                </p>
+                {activeProjectMembers.length === 0 ? (
+                  <p className="text-sm text-slate-400">No members yet — be the first!</p>
+                ) : (
+                  <div className="space-y-2">
+                    {activeProjectMembers.map((m) => (
+                      <div key={m.user_id || m.user_name} className="flex items-center gap-2.5">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#eaf2fd] text-[9px] font-bold text-[#1a5db5]">
+                          {initials(m.user_name || 'Builder')}
+                        </div>
+                        <span className="text-sm text-slate-700">{m.user_name || 'Builder'}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Real-time Chat */}
+              <div>
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Team Chat</p>
+                <div className="space-y-3 mb-3 max-h-64 overflow-y-auto pr-1">
+                  {projectMessages.length === 0 ? (
+                    <p className="text-sm text-slate-400">No messages yet — say hi!</p>
+                  ) : (
+                    projectMessages.map((msg) => {
+                      const isOwn = msg.user_id === user?.id
+                      return (
+                        <div key={msg.id} className={`flex gap-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
+                          <div style={{ width: 28, height: 28, borderRadius: '50%', background: isOwn ? '#4189DD' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: isOwn ? 'white' : '#475569', flexShrink: 0 }}>
+                            {initials(msg.user_name || 'U')}
+                          </div>
+                          <div className={`max-w-[75%] flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
+                            <div className={`rounded-2xl px-3 py-2 text-sm ${isOwn ? 'bg-[#4189DD] text-white rounded-tr-sm' : 'bg-[#f4f7fb] text-slate-700 rounded-tl-sm'}`}>
+                              {msg.message}
+                            </div>
+                            <span className="text-[10px] text-slate-400 mt-0.5">
+                              {msg.user_name} · {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                  <div ref={chatEndRef} />
+                </div>
+                {user ? (
+                  <div className="flex gap-2">
+                    <input
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+                      placeholder="Send a message..."
+                      className="flex-1 rounded-[12px] border border-[#dce6f5] px-3 py-2 text-sm outline-none focus:border-[#4189DD]"
+                    />
+                    <button
+                      type="button"
+                      onClick={sendMessage}
+                      className="rounded-[12px] bg-[#4189DD] px-4 py-2 text-sm font-medium text-white hover:bg-[#1a5db5]"
+                    >
+                      Send
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400">Sign in to chat</p>
+                )}
+              </div>
+            </div>
+
+           
+              {/* Mark as Building Now */}
+              {user?.id === activeProject.creator_id && activeProject.status !== 'building' && (
+                <button
+                  type="button"
+                  onClick={handleMarkAsBuilding}
+                  className="w-full rounded-full border border-[#4189DD] py-2 text-xs font-medium text-[#4189DD] hover:bg-[#eaf2fd]"
+                >
+                  Mark as Building Now
+                </button>
+              )}
+              {/* Join */}
+              {joinedProjects.includes(activeProject.id) ? (
+                <div className="flex items-center justify-center gap-2 rounded-full bg-[#eaf2fd] py-3 text-sm font-semibold text-[#1a5db5]">
+                  ✓ You have joined this project
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => user && handleJoinProject(activeProject)}
+                  className="w-full rounded-full bg-[#0f3d82] py-3 text-sm font-semibold text-white transition hover:bg-[#1a5db5]"
+                >
+                  {user ? 'Join Project' : 'Sign in to Join'}
+                </button>
+              )}
+            </div>
+          </div>
+      )}
+
+      {/* Toast */}
+      {toastMsg && (
+        <div
+          className="hh-toast"
+          style={{
+            position: 'fixed',
+            bottom: 28,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: '#0f3d82',
+            color: 'white',
+            padding: '12px 24px',
+            borderRadius: 12,
+            fontSize: 14,
+            fontWeight: 600,
+            fontFamily: 'DM Sans, sans-serif',
+            zIndex: 9999,
+            boxShadow: '0 8px 24px rgba(15,61,130,0.35)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {toastMsg}
+        </div>
+      )}
     </main>
   )
 }
