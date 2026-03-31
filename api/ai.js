@@ -2,6 +2,13 @@ export default async function handler(req, res) {
   console.log('GEMINI KEY EXISTS:', !!process.env.GEMINI_API_KEY)
 console.log('GEMINI KEY PREFIX:', process.env.GEMINI_API_KEY?.substring(0, 8))
   
+try {
+  const res = await fetch(...);
+  const data = await res.json();
+  console.log("Gemini response:", data);
+} catch (err) {
+  console.error("Gemini error:", err);
+}
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
