@@ -1,19 +1,19 @@
 export default async function handler(req, res) {
-  console.log('GEMINI KEY EXISTS:', !!process.env.GEMINI_API_KEY)
-console.log('GEMINI KEY PREFIX:', process.env.GEMINI_API_KEY?.substring(0, 8))
-  
-try {
-  const res = await fetch(...);
-  const data = await res.json();
-  console.log("Gemini response:", data);
-} catch (err) {
-  console.error("Gemini error:", err);
-}
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
   const { messages, system } = req.body
+
+  if (!messages || !Array.isArray(messages)) {
+    return res.status(400).json({
+      error: 'Invalid request: messages array required'
+    })
+  }
+
+  console.log('GEMINI KEY EXISTS:', !!process.env.GEMINI_API_KEY)
+  console.log('GROQ KEY EXISTS:', !!process.env.GROQ_API_KEY)
+  console.log('Messages count:', messages.length)
 
   // Try Gemini first
   try {
@@ -41,58 +41,67 @@ try {
     )
 
     const geminiData = await geminiRes.json()
+    console.log('Gemini status:', geminiRes.status)
+    console.log('Gemini response:', JSON.stringify(geminiData).substring(0, 200))
 
     if (geminiRes.ok) {
       const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text
       if (text) {
-        return res.status(200).json({ content: text, model: 'gemini' })
+        return res.status(200).json({
+          content: text,
+          model: 'gemini'
+        })
       }
     }
 
-    throw new Error('Gemini failed')
+    console.log('Gemini failed, trying Groq...')
 
   } catch (geminiError) {
-    console.log('Gemini failed, falling back to Groq:', geminiError.message)
+    console.log('Gemini error:', geminiError.message)
+  }
 
-    // Fallback to Groq
-    try {
-      const groqMessages = system
-        ? [{ role: 'system', content: system }, ...messages]
-        : messages
+  // Fallback to Groq
+  try {
+    const groqMessages = system
+      ? [{ role: 'system', content: system }, ...messages]
+      : messages
 
-      const groqRes = await fetch(
-        'https://api.groq.com/openai/v1/chat/completions',
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            messages: groqMessages,
-            max_tokens: 1024,
-            temperature: 0.7,
-          })
-        }
-      )
-
-      const groqData = await groqRes.json()
-
-      if (!groqRes.ok) {
-        throw new Error(groqData.error?.message || 'Groq failed')
+    const groqRes = await fetch(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: groqMessages,
+          max_tokens: 1024,
+        })
       }
+    )
 
-      return res.status(200).json({
-        content: groqData.choices[0].message.content,
-        model: 'groq'
-      })
+    const groqData = await groqRes.json()
+    console.log('Groq status:', groqRes.status)
+    console.log('Groq response:', JSON.stringify(groqData).substring(0, 200))
 
-    } catch (groqError) {
-      return res.status(500).json({
-        error: 'All AI services unavailable. Please try again.',
-        model: 'none'
-      })
+    if (!groqRes.ok) {
+      throw new Error(
+        groqData.error?.message ||
+        'Groq failed with status ' + groqRes.status
+      )
     }
+
+    return res.status(200).json({
+      content: groqData.choices[0].message.content,
+      model: 'groq'
+    })
+
+  } catch (groqError) {
+    console.log('Groq error:', groqError.message)
+    return res.status(500).json({
+      error: 'Both AI services failed. ' + groqError.message
+    })
   }
 }
