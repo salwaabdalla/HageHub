@@ -81,8 +81,11 @@ async function requestAI(messages, system, langForWarning = 'both') {
 
   if (!content) throw new Error('AI returned an empty response.')
 
+  const model = isDev ? 'gemini' : (data.model || 'gemini')
+
   return {
     content,
+    model,
     warning: langForWarning === 'so' && shouldWarnSomaliQuality(content)
       ? 'AI response may not be fully in Somali' : '',
   }

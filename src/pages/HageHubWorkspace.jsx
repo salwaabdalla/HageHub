@@ -741,6 +741,7 @@ function HageHubWorkspace({ user, onLogout }) {
         role: 'assistant',
         content: reply.content,
         warning: reply.warning,
+        model: reply.model,
       }
       const next = [...withUser, assistantMsg]
       setAiMessages(next)
@@ -1495,6 +1496,11 @@ ${codeExplanation.content}`
                       <div className={`max-w-[75%] rounded-[16px] px-4 py-3 text-sm leading-7 ${message.role === 'user' ? 'bg-[#4189DD] text-white' : 'border border-[#dce6f5] bg-[#f4f7fb] text-slate-600'}`}>
                         <div className="whitespace-pre-wrap">{message.content}</div>
                         {message.warning ? <p className="mt-3 text-xs text-amber-600">{message.warning}</p> : null}
+                        {message.role === 'assistant' && message.model ? (
+                          <span style={{ fontSize: 9, color: 'rgba(0,0,0,0.18)', fontFamily: 'DM Sans, sans-serif', letterSpacing: 1, marginTop: 4, display: 'block' }}>
+                            {message.model === 'gemini' ? '✦ G' : '✦ L'}
+                          </span>
+                        ) : null}
                         {message.role === 'assistant' ? (
                           <div className="mt-3 flex flex-wrap gap-2">
                             <button
