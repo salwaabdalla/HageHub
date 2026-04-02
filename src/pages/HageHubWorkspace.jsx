@@ -281,6 +281,13 @@ function HageHubWorkspace({ user, onLogout }) {
   const [connectTab, setConnectTab] = useState(
     user?.role === 'mentor' ? 'requests' : 'browse',
   )
+  const [mentorModal, setMentorModal] = useState(null) // { name, role }
+  const [mentorMsgInput, setMentorMsgInput] = useState('')
+  const [mentorMsgLoading, setMentorMsgLoading] = useState(false)
+  const [sentRequests, setSentRequests] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('hh_mentor_requests') || '[]') } catch { return [] }
+  })
+  const [myMentorRequests, setMyMentorRequests] = useState([])
   const [workTab, setWorkTab] = useState('all')
   const [buildTab, setBuildTab] = useState('all')
   const [projects, setProjects] = useState([])
@@ -488,6 +495,17 @@ function HageHubWorkspace({ user, onLogout }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
+  // Fetch mentorship requests when My Requests tab is opened
+  useEffect(() => {
+    if (connectTab !== 'pending' || !user?.id) return
+    supabase
+      .from('mentorship_requests')
+      .select('*')
+      .eq('student_id', user.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setMyMentorRequests(data || []))
+  }, [connectTab, user?.id])
+
   // Reload members whenever the active project changes
   useEffect(() => {
     if (!activeProject?.id) return
@@ -572,6 +590,33 @@ function HageHubWorkspace({ user, onLogout }) {
       user_name: user?.user_metadata?.name || user?.name || 'Builder',
       message: text,
     })
+  }
+
+  async function handleSendMentorRequest() {
+    if (!mentorMsgInput.trim() || mentorMsgInput.trim().length < 20 || !user || !mentorModal) return
+    setMentorMsgLoading(true)
+    try {
+      const { error } = await supabase.from('mentorship_requests').insert([{
+        mentor_name: mentorModal.name,
+        mentor_role: mentorModal.role,
+        student_id: user.id,
+        student_name: user.user_metadata?.name || user.name || 'Student',
+        message: mentorMsgInput.trim(),
+        status: 'pending',
+      }])
+      if (error) throw error
+      const updated = [...sentRequests, mentorModal.name]
+      setSentRequests(updated)
+      localStorage.setItem('hh_mentor_requests', JSON.stringify(updated))
+      setMentorModal(null)
+      setMentorMsgInput('')
+      showToast('Request sent! Mentors typically respond within 48 hours 🎉')
+    } catch (err) {
+      console.error('Failed to send request:', err)
+      showToast('Failed to send request. Please try again.')
+    } finally {
+      setMentorMsgLoading(false)
+    }
   }
 
   async function handleMarkAsBuilding() {
@@ -1686,25 +1731,66 @@ ${codeExplanation.content}`
               )
             ) : connectTab === 'cohort' ? (
               <div className="rounded-[20px] bg-[#0f3d82] p-6 text-white">
-                <h3 className="font-display text-3xl">Cohort with Abdi Axmed</h3>
-                <p className="mt-2 text-sm text-white/70">Focus: Interview Prep + System Design · Started March 1, 2024</p>
-                <NavLink to="/connect" className="mt-4 inline-flex rounded-full bg-[#4189DD] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#6aaae8]">Find a mentor in Connect ?</NavLink>
-                <p className="mt-2 text-xs text-white/45">Week 3 of 8 complete</p>
+                <h3 className="font-display text-3xl">My Cohort</h3>
+                <p className="mt-2 text-sm text-white/70">Your cohort will appear here once a mentor accepts your request.</p>
+                <button type="button" onClick={() => setConnectTab('browse')} className="mt-4 inline-flex rounded-full bg-[#4189DD] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#6aaae8]">Browse Mentors</button>
               </div>
             ) : connectTab === 'pending' ? (
-              <div className="rounded-[20px] border border-[#dce6f5] bg-white p-10 text-center text-slate-400">You have 1 pending request to Hodan Muuse — awaiting response.</div>
+              <div>
+                {myMentorRequests.length === 0 ? (
+                  <div className="rounded-[20px] border border-[#dce6f5] bg-white p-10 text-center">
+                    <p className="text-slate-500 text-sm">You haven't requested any mentorships yet.</p>
+                    <p className="text-slate-400 text-sm mt-1">Browse mentors and send your first request!</p>
+                    <button type="button" onClick={() => setConnectTab('browse')} className="mt-4 rounded-full bg-[#4189DD] px-5 py-2 text-sm font-medium text-white">Browse Mentors</button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {myMentorRequests.map((req) => (
+                      <div key={req.id} className="rounded-[20px] border border-[#dce6f5] bg-white p-5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex gap-3 items-start">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#4189DD] text-xs font-semibold text-white">
+                              {(req.mentor_name || '').substring(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-slate-900">{req.mentor_name}</p>
+                              <p className="text-xs text-slate-400">{req.mentor_role}</p>
+                            </div>
+                          </div>
+                          <span className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-wide ${req.status === 'accepted' ? 'bg-[#dcfce7] text-[#16a34a]' : 'bg-[#fef3c7] text-[#d97706]'}`}>
+                            {req.status === 'accepted' ? 'Accepted' : 'Pending'}
+                          </span>
+                        </div>
+                        <p className="mt-3 text-sm text-slate-600 leading-7">"{(req.message || '').substring(0, 120)}{(req.message || '').length > 120 ? '...' : ''}"</p>
+                        <p className="mt-2 text-xs text-slate-400">
+                          Sent {req.created_at ? new Date(req.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {mentorCards.map(([init, name, role, tags, loc, bg]) => (
-                  <article key={name} className="rounded-[20px] border border-[#dce6f5] bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-[0_10px_28px_rgba(65,137,221,0.08)]">
-                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full text-sm font-semibold text-white" style={{ backgroundColor: bg }}>{init}</div>
-                    <h3 className="font-display text-2xl text-slate-950">{name}</h3>
-                    <p className="mt-1 text-sm text-slate-400">{role}</p>
-                    <div className="mt-4 flex flex-wrap gap-2">{tags.map((tag) => <span key={tag} className="rounded-full bg-[#eaf2fd] px-3 py-1 text-xs font-semibold text-[#1a5db5]">{tag}</span>)}</div>
-                    <p className="mt-4 text-sm text-slate-500">📍 {loc}</p>
-                    <button className="mt-5 w-full rounded-full border border-[#c8dff7] px-4 py-3 text-sm font-medium text-[#4189DD] transition hover:bg-[#4189DD] hover:text-white">Request Mentorship</button>
-                  </article>
-                ))}
+                {mentorCards.map(([init, name, role, tags, loc, bg]) => {
+                  const alreadySent = sentRequests.includes(name)
+                  return (
+                    <article key={name} className="rounded-[20px] border border-[#dce6f5] bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-[0_10px_28px_rgba(65,137,221,0.08)]">
+                      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full text-sm font-semibold text-white" style={{ backgroundColor: bg }}>{init}</div>
+                      <h3 className="font-display text-2xl text-slate-950">{name}</h3>
+                      <p className="mt-1 text-sm text-slate-400">{role}</p>
+                      <div className="mt-4 flex flex-wrap gap-2">{tags.map((tag) => <span key={tag} className="rounded-full bg-[#eaf2fd] px-3 py-1 text-xs font-semibold text-[#1a5db5]">{tag}</span>)}</div>
+                      <p className="mt-4 text-sm text-slate-500">📍 {loc}</p>
+                      <button
+                        type="button"
+                        onClick={() => { if (!alreadySent && user) { setMentorModal({ name, role }); setMentorMsgInput('') } }}
+                        className={`mt-5 w-full rounded-full px-4 py-3 text-sm font-medium transition ${alreadySent ? 'border border-[#bbf7d0] bg-[#dcfce7] text-[#16a34a] cursor-default' : 'border border-[#c8dff7] text-[#4189DD] hover:bg-[#4189DD] hover:text-white'}`}
+                      >
+                        {alreadySent ? '✓ Request Sent' : 'Request Mentorship'}
+                      </button>
+                    </article>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -2596,6 +2682,45 @@ ${codeExplanation.content}`
               )}
             </div>
           </div>
+      )}
+
+      {/* Mentorship Request Modal */}
+      {mentorModal && (
+        <div
+          onClick={() => { setMentorModal(null); setMentorMsgInput('') }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(12,18,32,.55)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(3px)' }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 480, boxShadow: '0 24px 80px rgba(0,0,0,.18)', padding: '28px 32px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
+              <div>
+                <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: '#8a9bbf', marginBottom: 6 }}>Request Mentorship</p>
+                <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, fontWeight: 700, color: '#0c1220' }}>{mentorModal.name}</h2>
+                <p style={{ fontSize: 13, color: '#8a9bbf', marginTop: 2 }}>{mentorModal.role}</p>
+              </div>
+              <button onClick={() => { setMentorModal(null); setMentorMsgInput('') }} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #dce6f5', background: '#f4f7fb', cursor: 'pointer', fontSize: 16, color: '#8a9bbf', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+            </div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#3d4f6e', marginBottom: 8 }}>
+              Introduce yourself and what you want to work on
+            </label>
+            <textarea
+              value={mentorMsgInput}
+              onChange={e => setMentorMsgInput(e.target.value)}
+              placeholder="Hi! I'm a self-taught developer focusing on React. I'd love guidance on..."
+              rows={5}
+              style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #dce6f5', borderRadius: 12, fontSize: 13, fontFamily: 'DM Sans, sans-serif', color: '#0c1220', background: '#f4f7fb', outline: 'none', resize: 'vertical', boxSizing: 'border-box', lineHeight: 1.6 }}
+            />
+            <p style={{ fontSize: 11, color: mentorMsgInput.trim().length < 20 ? '#e11d48' : '#16a34a', marginTop: 5 }}>
+              {mentorMsgInput.trim().length < 20 ? `${20 - mentorMsgInput.trim().length} more characters needed` : 'Looks good!'}
+            </p>
+            <button
+              onClick={handleSendMentorRequest}
+              disabled={mentorMsgInput.trim().length < 20 || mentorMsgLoading}
+              style={{ marginTop: 16, width: '100%', padding: '13px 0', borderRadius: 100, background: mentorMsgInput.trim().length >= 20 ? '#4189DD' : '#dce6f5', color: mentorMsgInput.trim().length >= 20 ? '#fff' : '#8a9bbf', border: 'none', fontSize: 14, fontWeight: 600, cursor: mentorMsgInput.trim().length >= 20 ? 'pointer' : 'not-allowed', fontFamily: 'DM Sans, sans-serif' }}
+            >
+              {mentorMsgLoading ? 'Sending...' : 'Send Request'}
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Toast */}

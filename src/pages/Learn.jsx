@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import FIELDS from '../data/learnFields'
 import { useLearnState } from '../hooks/useLearnState'
+import { supabase } from '../lib/supabase'
 
 // ─── shared style tokens ───────────────────────────────────────────
 const S = {
@@ -247,14 +248,14 @@ function FieldCard({ field: f, isJoined, pct, total, onOpen, onToggleJoin }) {
 // ─── Hub Sidebar ───────────────────────────────────────────────────
 const HUB_NAV = [
   { id: 'overview', icon: '🏠', label: 'Overview' },
-  { id: 'chat', icon: '💬', label: 'Group Chat', badge: '3' },
+  { id: 'chat', icon: '💬', label: 'Group Chat' },
   { id: 'mentors', icon: '🧭', label: 'Mentors' },
   { id: 'roadmap', icon: '🗺️', label: 'Roadmap' },
   { id: 'leaderboard', icon: '🏆', label: 'Leaderboard' },
   { id: 'events', icon: '📅', label: 'Events', badge: '2', badgeGreen: true },
 ]
 
-function HubSidebar({ field: f, activePanel, onPanelChange, onBack }) {
+function HubSidebar({ field: f, activePanel, onPanelChange, onBack, onlineCount, chatBadge }) {
   return (
     <div className="hub-sidebar" style={{ width: 220, minWidth: 220, background: '#fff', borderRight: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column', overflowY: 'auto', flexShrink: 0 }}>
       <div style={{ padding: '18px 16px 12px', borderBottom: `1px solid ${S.border}` }}>
@@ -271,6 +272,8 @@ function HubSidebar({ field: f, activePanel, onPanelChange, onBack }) {
         <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: S.textSoft, padding: '10px 16px 4px' }}>Navigate</div>
         {HUB_NAV.map(item => {
           const active = activePanel === item.id
+          const badge = item.id === 'chat' ? (chatBadge > 0 ? String(chatBadge) : null) : item.badge
+          const badgeBg = item.id === 'chat' ? S.rose : (item.badgeGreen ? S.green : S.blue)
           return (
             <div key={item.id} onClick={() => onPanelChange(item.id)} style={{
               display: 'flex', alignItems: 'center', gap: 10,
@@ -285,8 +288,8 @@ function HubSidebar({ field: f, activePanel, onPanelChange, onBack }) {
               {active && <span style={{ position: 'absolute', left: -6, top: '50%', transform: 'translateY(-50%)', width: 3, height: 18, background: S.blue, borderRadius: '0 3px 3px 0' }} />}
               <div style={{ width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, background: active ? 'rgba(65,137,221,.15)' : 'transparent' }}>{item.icon}</div>
               <span>{item.label}</span>
-              {item.badge && (
-                <span style={{ marginLeft: 'auto', background: item.badgeGreen ? S.green : S.blue, color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 100 }}>{item.badge}</span>
+              {badge && (
+                <span style={{ marginLeft: 'auto', background: badgeBg, color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 100 }}>{badge}</span>
               )}
             </div>
           )
@@ -304,7 +307,10 @@ function HubSidebar({ field: f, activePanel, onPanelChange, onBack }) {
             <div style={{ fontSize: 12, fontWeight: 500, color: S.textMid }}>{m.name}</div>
           </div>
         ))}
-        <div style={{ fontSize: 11, color: S.textSoft, marginTop: 8 }}>{f.onlineMembers.length} online</div>
+        <div style={{ fontSize: 11, color: S.textSoft, marginTop: 8 }}>
+          <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: S.green, marginRight: 5, verticalAlign: 'middle' }} />
+          {onlineCount} online now
+        </div>
       </div>
     </div>
   )
@@ -437,11 +443,26 @@ function getAvatarColor(name) {
   return colors[hash % colors.length]
 }
 
-function ChatPanel({ field: f, userName, onSwitchPanel }) {
-  const [messages, setMessages] = useState(() => {
-    const stored = localStorage.getItem(`hh_chat_${f.id}`)
-    return stored ? JSON.parse(stored) : [...f.chatMessages]
-  })
+function normalizeFieldMsg(msg, userId) {
+  const d = new Date(msg.created_at)
+  const h = d.getHours(), mi = d.getMinutes()
+  return {
+    id: msg.id,
+    init: msg.user_init || (msg.user_name || '').substring(0, 2).toUpperCase() || '??',
+    name: msg.user_name || 'Member',
+    color: getAvatarColor(msg.user_name),
+    role: 'student',
+    msg: msg.message,
+    time: `${h}:${mi < 10 ? '0' : ''}${mi} ${h < 12 ? 'AM' : 'PM'}`,
+    own: msg.user_id === userId,
+    reactions: [],
+    image: null,
+    replyTo: null,
+  }
+}
+
+function ChatPanel({ field: f, user, userName, onSwitchPanel, onNewMessage, onlineCount }) {
+  const [messages, setMessages] = useState([])
   const [inputVal, setInputVal] = useState('')
   const [replyingTo, setReplyingTo] = useState(null)
   const [pendingImage, setPendingImage] = useState(null)
@@ -449,44 +470,70 @@ function ChatPanel({ field: f, userName, onSwitchPanel }) {
   const fileInputRef = useRef(null)
   const textareaRef = useRef(null)
 
-  // Reset when field changes
+  // Load from Supabase + subscribe to realtime when field changes
   useEffect(() => {
-    const stored = localStorage.getItem(`hh_chat_${f.id}`)
-    setMessages(stored ? JSON.parse(stored) : [...f.chatMessages])
+    setMessages([])
     setReplyingTo(null)
     setPendingImage(null)
     setInputVal('')
+    // Mark as read on open
+    localStorage.setItem(`hh_lastread_${f.id}`, new Date().toISOString())
+
+    supabase
+      .from('field_messages')
+      .select('*')
+      .eq('field_id', f.id)
+      .order('created_at', { ascending: true })
+      .limit(50)
+      .then(({ data }) => {
+        setMessages(data && data.length > 0
+          ? data.map(m => normalizeFieldMsg(m, user?.id))
+          : [...f.chatMessages]
+        )
+      })
+
+    const channel = supabase
+      .channel('field-chat-' + f.id)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'field_messages',
+        filter: 'field_id=eq.' + f.id,
+      }, (payload) => {
+        const msg = normalizeFieldMsg(payload.new, user?.id)
+        setMessages(prev => {
+          // If showing seeded messages (no id), replace with real ones
+          const wasSeeded = prev.length > 0 && !prev[0].id
+          return wasSeeded ? [msg] : [...prev, msg]
+        })
+        onNewMessage?.()
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+      })
+      .subscribe()
+
+    return () => supabase.removeChannel(channel)
   }, [f.id])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  function sendMsg() {
+  async function sendMsg() {
     const text = inputVal.trim()
     if (!text && !pendingImage) return
-    const now = new Date()
-    const h = now.getHours(), m = now.getMinutes()
-    const timeStr = `${h}:${m < 10 ? '0' : ''}${m} ${h < 12 ? 'AM' : 'PM'}`
-    const newMsg = {
-      init: userName.substring(0, 2).toUpperCase(),
-      name: userName.charAt(0).toUpperCase() + userName.slice(1),
-      color: S.blue,
-      role: 'student',
-      msg: text,
-      time: timeStr,
-      own: true,
-      reactions: [],
-      image: pendingImage || null,
-      replyTo: replyingTo ? { name: replyingTo.name, text: replyingTo.msg.substring(0, 60) + (replyingTo.msg.length > 60 ? '...' : '') } : null,
-    }
-    const next = [...messages, newMsg]
-    setMessages(next)
-    localStorage.setItem(`hh_chat_${f.id}`, JSON.stringify(next))
     setInputVal('')
     setPendingImage(null)
     setReplyingTo(null)
     if (textareaRef.current) textareaRef.current.style.height = ''
+    if (!user) return
+    const name = user?.user_metadata?.name || userName || 'Member'
+    await supabase.from('field_messages').insert([{
+      field_id: f.id,
+      user_id: user.id,
+      user_name: name,
+      user_init: name.substring(0, 2).toUpperCase(),
+      message: text,
+    }])
   }
 
   function handleImage(e) {
@@ -496,7 +543,7 @@ function ChatPanel({ field: f, userName, onSwitchPanel }) {
   }
 
   function toggleReaction(idx, emoji) {
-    const next = messages.map((m, i) => {
+    setMessages(prev => prev.map((m, i) => {
       if (i !== idx) return m
       const reactions = [...(m.reactions || [])]
       const existing = reactions.find(r => r.emoji === emoji)
@@ -506,12 +553,10 @@ function ChatPanel({ field: f, userName, onSwitchPanel }) {
         return { ...m, reactions: reactions.filter(r => r.count > 0) }
       }
       return { ...m, reactions: [...reactions, { emoji, count: 1, mine: true }] }
-    })
-    setMessages(next)
-    localStorage.setItem(`hh_chat_${f.id}`, JSON.stringify(next))
+    }))
   }
 
-  const initials = userName.substring(0, 2).toUpperCase()
+  const initials = (user?.user_metadata?.name || userName || '').substring(0, 2).toUpperCase()
 
   return (
     <div className="chat-panel" style={{ display: 'flex', flex: 1, overflow: 'hidden', height: '100%' }}>
@@ -526,7 +571,7 @@ function ChatPanel({ field: f, userName, onSwitchPanel }) {
           </div>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: S.green, fontWeight: 600 }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: S.green, display: 'inline-block' }} />
-            {f.onlineMembers.length} online
+            {onlineCount} online now
           </div>
         </div>
 
@@ -541,7 +586,7 @@ function ChatPanel({ field: f, userName, onSwitchPanel }) {
             const isOwn = m.own || false
             const grouped = i > 0 && messages[i - 1].name === m.name && !m.own
             return (
-              <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '3px 0', flexDirection: isOwn ? 'row-reverse' : 'row' }}>
+              <div key={m.id || i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '3px 0', flexDirection: isOwn ? 'row-reverse' : 'row' }}>
                 <div style={{ width: 34, flexShrink: 0, opacity: grouped ? 0 : 1 }}>
                   <div style={{ width: 34, height: 34, borderRadius: '50%', fontSize: 11, fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', background: getAvatarColor(m.name || m.init) }}>
                     {getInitials(m.name) || m.init}
@@ -657,6 +702,10 @@ function ChatPanel({ field: f, userName, onSwitchPanel }) {
               {m.role === 'Mentor' && <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 100, background: S.amberLight, color: S.amber }}>Mentor</span>}
             </div>
           ))}
+          <div style={{ fontSize: 11, color: S.textSoft, marginTop: 8 }}>
+            <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: S.green, marginRight: 5, verticalAlign: 'middle' }} />
+            {onlineCount} online now
+          </div>
         </div>
         <div style={{ padding: '16px 16px 8px', borderTop: `1px solid ${S.border}` }}>
           <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: S.textSoft, marginBottom: 12 }}>Mentors</div>
@@ -806,14 +855,56 @@ function RoadmapNode({ node: n, isDone }) {
 }
 
 // ─── Leaderboard Panel ─────────────────────────────────────────────
+async function fetchLeaderboard() {
+  const [{ data: answerers }, { data: questioners }] = await Promise.all([
+    supabase.from('answers').select('user_id, author_name').limit(100),
+    supabase.from('questions').select('user_id, poster_name').limit(100),
+  ])
+  const scores = {}
+  answerers?.forEach(a => {
+    if (!a.user_id) return
+    if (!scores[a.user_id]) scores[a.user_id] = { name: a.author_name, score: 0 }
+    scores[a.user_id].score += 15
+  })
+  questioners?.forEach(q => {
+    if (!q.user_id) return
+    if (!scores[q.user_id]) scores[q.user_id] = { name: q.poster_name, score: 0 }
+    scores[q.user_id].score += 10
+  })
+  return Object.entries(scores)
+    .map(([id, data]) => ({ id, ...data }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10)
+}
+
 function LeaderboardPanel({ field: f, completed, userName }) {
-  const lb = f.leaderboard
-  const podium = lb.slice(0, 3)
-  const rest = lb.slice(3)
+  const [realBoard, setRealBoard] = useState([])
+
+  useEffect(() => {
+    fetchLeaderboard().then(setRealBoard).catch(console.error)
+  }, [])
+
   const userDone = Object.keys(completed).filter(k => k.startsWith(f.id + '_')).length
   const userPoints = userDone * 10
   const userInitials = userName.substring(0, 2).toUpperCase()
   const userDisplayName = userName.charAt(0).toUpperCase() + userName.slice(1)
+
+  // Merge real data with hardcoded fallback
+  const realFormatted = realBoard.map(entry => ({
+    name: entry.name || 'Member',
+    init: (entry.name || 'M').substring(0, 2).toUpperCase(),
+    loc: '',
+    score: entry.score,
+    color: getAvatarColor(entry.name),
+    change: `+${entry.score}`,
+  }))
+  const staticBoard = f.leaderboard
+  const lb = realFormatted.length >= 3
+    ? realFormatted
+    : [...realFormatted, ...staticBoard.slice(realFormatted.length)]
+
+  const podium = lb.slice(0, 3)
+  const rest = lb.slice(3)
 
   return (
     <div style={{ padding: 24, maxWidth: 700 }}>
@@ -943,10 +1034,42 @@ function EventCard({ event: e, rsvped, typeStyle, onRsvp }) {
 }
 
 // ─── Field Hub ─────────────────────────────────────────────────────
-function FieldHub({ field, activePanel, onPanelChange, onBack, completed, markComplete, toggleRsvp, isRsvped, onOpenLesson, showToast, userName, navigate }) {
+function FieldHub({ field, activePanel, onPanelChange, onBack, completed, markComplete, toggleRsvp, isRsvped, onOpenLesson, showToast, userName, user, navigate }) {
+  const [onlineCount, setOnlineCount] = useState(field.onlineMembers?.length || 0)
+  const [chatUnread, setChatUnread] = useState(0)
+
+  // Clear unread badge when switching to chat
+  useEffect(() => {
+    if (activePanel === 'chat') {
+      setChatUnread(0)
+      localStorage.setItem(`hh_lastread_${field.id}`, new Date().toISOString())
+    }
+  }, [activePanel, field.id])
+
+  // Supabase presence — track who is online in this field
+  useEffect(() => {
+    if (!field?.id) return
+    const ch = supabase.channel('online-' + field.id)
+    ch.on('presence', { event: 'sync' }, () => {
+      setOnlineCount(Object.keys(ch.presenceState()).length)
+    })
+    .subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await ch.track({ user_id: user?.id || 'guest', online_at: new Date().toISOString() })
+      }
+    })
+    return () => supabase.removeChannel(ch)
+  }, [field?.id])
+
+  function handleNewChatMessage() {
+    if (activePanel !== 'chat') {
+      setChatUnread(prev => prev + 1)
+    }
+  }
+
   return (
     <div className="hub-page" style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
-      <HubSidebar field={field} activePanel={activePanel} onPanelChange={onPanelChange} onBack={onBack} />
+      <HubSidebar field={field} activePanel={activePanel} onPanelChange={onPanelChange} onBack={onBack} onlineCount={onlineCount} chatBadge={chatUnread} />
       <div className="hub-main" style={{ flex: 1, overflowY: activePanel === 'chat' ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* Back bar — always visible above panels */}
         <div style={{ padding: '10px 20px', borderBottom: `1px solid ${S.border}`, background: '#fff', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
@@ -978,7 +1101,7 @@ function FieldHub({ field, activePanel, onPanelChange, onBack, completed, markCo
         <MobileHubTabs activePanel={activePanel} onPanelChange={onPanelChange} />
         <div className="hub-panel">
           {activePanel === 'overview' && <OverviewPanel field={field} completed={completed} onSwitchPanel={onPanelChange} />}
-          {activePanel === 'chat' && <ChatPanel field={field} userName={userName} onSwitchPanel={onPanelChange} />}
+          {activePanel === 'chat' && <ChatPanel field={field} user={user} userName={userName} onSwitchPanel={onPanelChange} onNewMessage={handleNewChatMessage} onlineCount={onlineCount} />}
           {activePanel === 'mentors' && <MentorsPanel field={field} onSwitchPanel={onPanelChange} showToast={showToast} />}
           {activePanel === 'roadmap' && <RoadmapPanel field={field} completed={completed} onOpenLesson={onOpenLesson} />}
           {activePanel === 'leaderboard' && <LeaderboardPanel field={field} completed={completed} userName={userName} />}
@@ -1069,6 +1192,7 @@ export default function Learn({ user }) {
           onOpenLesson={setLessonModal}
           showToast={showToast}
           userName={userName}
+          user={user}
           navigate={navigate}
         />
       )}
