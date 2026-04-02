@@ -730,20 +730,57 @@ function ChatPanel({ field: f, user, userName, onSwitchPanel, onNewMessage, onli
 
 // ─── Mentors Panel ─────────────────────────────────────────────────
 function MentorsPanel({ field: f, onSwitchPanel, showToast }) {
+  const [mentorModal, setMentorModal] = useState(null)
+  const [modalMsg, setModalMsg] = useState('')
+  const [sentRequests, setSentRequests] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('hh_mentor_reqs') || '{}') } catch { return {} }
+  })
+
+  function handleSendRequest() {
+    if (modalMsg.trim().length < 20) return
+    const newSent = { ...sentRequests, [mentorModal.name]: true }
+    setSentRequests(newSent)
+    localStorage.setItem('hh_mentor_reqs', JSON.stringify(newSent))
+    showToast(`Request sent to ${mentorModal.name}!`)
+    setMentorModal(null)
+    setModalMsg('')
+  }
+
   return (
     <div style={{ padding: 24, maxWidth: 900 }}>
+      {mentorModal && (
+        <div onClick={() => { setMentorModal(null); setModalMsg('') }} style={{ position: 'fixed', inset: 0, background: 'rgba(12,18,32,.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(3px)' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 480, padding: '28px 32px', boxShadow: '0 24px 80px rgba(0,0,0,.18)' }}>
+            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, fontWeight: 700, color: S.text, marginBottom: 6 }}>Request Mentorship</div>
+            <p style={{ fontSize: 13, color: S.textMid, marginBottom: 18, lineHeight: 1.6 }}>Send a request to <strong>{mentorModal.name}</strong>. Tell them about your goals and what you'd like to learn.</p>
+            <textarea
+              value={modalMsg}
+              onChange={e => setModalMsg(e.target.value)}
+              placeholder="Hi! I'm learning and would love guidance on..."
+              style={{ width: '100%', minHeight: 110, padding: '12px 14px', border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 13, fontFamily: "'DM Sans', sans-serif", color: S.text, background: S.bg, outline: 'none', resize: 'vertical', boxSizing: 'border-box', lineHeight: 1.6 }}
+            />
+            <div style={{ fontSize: 11, color: modalMsg.trim().length < 20 ? S.rose : S.green, marginTop: 4, marginBottom: 18 }}>
+              {modalMsg.trim().length < 20 ? `${20 - modalMsg.trim().length} more characters needed` : '✓ Ready to send'}
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => { setMentorModal(null); setModalMsg('') }} style={{ padding: '10px 20px', border: `1.5px solid ${S.border}`, background: '#fff', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", color: S.textMid }}>Cancel</button>
+              <button onClick={handleSendRequest} disabled={modalMsg.trim().length < 20} style={{ padding: '10px 24px', border: 'none', background: modalMsg.trim().length >= 20 ? S.blue : S.border, color: modalMsg.trim().length >= 20 ? '#fff' : S.textSoft, borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: modalMsg.trim().length >= 20 ? 'pointer' : 'not-allowed', fontFamily: "'DM Sans', sans-serif" }}>Send Request</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 700, marginBottom: 6, color: S.text }}>{f.name} Mentors</div>
       <p style={{ fontSize: 14, color: S.textMid, marginBottom: 22 }}>{f.mentors.length} expert{f.mentors.length > 1 ? 's' : ''} ready to guide you. Request a mentorship or ask a public question in the community chat.</p>
       <div className="mentor-panel-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
         {f.mentors.map((m, i) => (
-          <MentorCard key={i} mentor={m} onRequest={() => showToast(`Request sent to ${m.name}! ✓`)} onChat={() => onSwitchPanel('chat')} />
+          <MentorCard key={i} mentor={m} sent={!!sentRequests[m.name]} onRequest={() => setMentorModal(m)} onChat={() => onSwitchPanel('chat')} />
         ))}
       </div>
     </div>
   )
 }
 
-function MentorCard({ mentor: m, onRequest, onChat }) {
+function MentorCard({ mentor: m, onRequest, onChat, sent }) {
   const [hover, setHover] = useState(false)
   return (
     <div onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} style={{ background: '#fff', border: `1.5px solid ${hover ? S.blueMid : S.border}`, borderRadius: S.radiusLg, padding: 22, transition: 'all .2s', cursor: 'pointer', transform: hover ? 'translateY(-2px)' : 'none', boxShadow: hover ? '0 8px 24px rgba(65,137,221,.1)' : 'none' }}>
@@ -768,7 +805,7 @@ function MentorCard({ mentor: m, onRequest, onChat }) {
         <span style={{ fontSize: 11, color: S.textSoft }}><strong style={{ color: S.textMid }}>{m.rating}</strong> ★</span>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={onRequest} style={{ flex: 1, padding: 9, borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", background: S.blue, color: '#fff', border: 'none' }}>Request Mentorship</button>
+        <button onClick={sent ? undefined : onRequest} style={{ flex: 1, padding: 9, borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: sent ? 'default' : 'pointer', fontFamily: "'DM Sans', sans-serif", background: sent ? S.greenLight : S.blue, color: sent ? S.green : '#fff', border: sent ? '1px solid #bbf7d0' : 'none' }}>{sent ? '✓ Request Sent' : 'Request Mentorship'}</button>
         <button onClick={onChat} style={{ flex: 1, padding: 9, borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", background: 'transparent', color: S.blue, border: `1.5px solid ${S.blueMid}` }}>Message in Chat</button>
       </div>
     </div>
@@ -855,22 +892,44 @@ function RoadmapNode({ node: n, isDone }) {
 }
 
 // ─── Leaderboard Panel ─────────────────────────────────────────────
-async function fetchLeaderboard() {
-  const [{ data: answerers }, { data: questioners }] = await Promise.all([
-    supabase.from('answers').select('user_id, author_name').limit(100),
-    supabase.from('questions').select('user_id, poster_name').limit(100),
+async function fetchLeaderboard(f) {
+  const fieldTags = new Set([
+    ...f.chips.map(c => c.toLowerCase()),
+    ...f.phases.flatMap(ph => ph.nodes.flatMap(n => n.tags.map(t => t.toLowerCase())))
   ])
+
+  const { data: allQuestions } = await supabase
+    .from('questions')
+    .select('id, user_id, poster_name, tags')
+    .limit(200)
+
   const scores = {}
-  answerers?.forEach(a => {
-    if (!a.user_id) return
-    if (!scores[a.user_id]) scores[a.user_id] = { name: a.author_name, score: 0 }
-    scores[a.user_id].score += 15
+  const fieldQIds = []
+
+  ;(allQuestions || []).forEach(q => {
+    const qtags = (q.tags || []).map(t => t.toLowerCase())
+    if (qtags.some(t => fieldTags.has(t))) {
+      fieldQIds.push(q.id)
+      if (q.user_id) {
+        if (!scores[q.user_id]) scores[q.user_id] = { name: q.poster_name, score: 0 }
+        scores[q.user_id].score += 10
+      }
+    }
   })
-  questioners?.forEach(q => {
-    if (!q.user_id) return
-    if (!scores[q.user_id]) scores[q.user_id] = { name: q.poster_name, score: 0 }
-    scores[q.user_id].score += 10
-  })
+
+  if (fieldQIds.length > 0) {
+    const { data: answers } = await supabase
+      .from('answers')
+      .select('user_id, author_name, question_id')
+      .in('question_id', fieldQIds)
+      .limit(200)
+    ;(answers || []).forEach(a => {
+      if (!a.user_id) return
+      if (!scores[a.user_id]) scores[a.user_id] = { name: a.author_name, score: 0 }
+      scores[a.user_id].score += 15
+    })
+  }
+
   return Object.entries(scores)
     .map(([id, data]) => ({ id, ...data }))
     .sort((a, b) => b.score - a.score)
@@ -881,8 +940,8 @@ function LeaderboardPanel({ field: f, completed, userName }) {
   const [realBoard, setRealBoard] = useState([])
 
   useEffect(() => {
-    fetchLeaderboard().then(setRealBoard).catch(console.error)
-  }, [])
+    fetchLeaderboard(f).then(setRealBoard).catch(console.error)
+  }, [f.id])
 
   const userDone = Object.keys(completed).filter(k => k.startsWith(f.id + '_')).length
   const userPoints = userDone * 10

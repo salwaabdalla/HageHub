@@ -177,11 +177,11 @@ function normalizeProject(row) {
   }
 }
 
-const stories = [
-  ['#0f3d82', 'AA', 'A', 'Abdi Axmed', 'Mar 2024', 'From Mogadishu to Google: my 5-year journey', "I learned to code on a borrowed laptop in a cafe with spotty internet. Here's what nobody tells you about making it in tech from Somalia.", 'Career'],
-  ['#1a5db5', 'HM', 'H', 'Hodan Muuse', 'Feb 2024', 'On being Somali in a room full of engineers', 'The subtle moments that make you question if you belong and why building this community changes everything.', 'Identity'],
-  ['#255b99', 'YI', 'Y', 'Yusuf Ibraahim', 'Jan 2024', "Building Somalia's first fintech startup from Hargeisa", 'No VC network. No Silicon Valley backing. Just a real problem and a community worth building for.', 'Somalia'],
-  ['#6aaae8', 'FN', 'F', 'Faadumo Nuur', 'Dec 2023', 'Why I turned down a $200k offer to work on Somali AI', 'The most important use of my ML skills is not somewhere far away. It is here.', 'AI / ML'],
+const HARDCODED_STORIES = [
+  { id: 'h1', author_init: 'AA', author_name: 'Abdi Axmed', created_at: '2024-03-01', title: 'From Mogadishu to Google: my 5-year journey', excerpt: "I learned to code on a borrowed laptop in a cafe with spotty internet. Here's what nobody tells you about making it in tech from Somalia.", content: "I learned to code on a borrowed laptop in a cafe with spotty internet.\n\nHere's what nobody tells you about making it in tech from Somalia.", category: 'Career', _color: '#0f3d82' },
+  { id: 'h2', author_init: 'HM', author_name: 'Hodan Muuse', created_at: '2024-02-01', title: 'On being Somali in a room full of engineers', excerpt: 'The subtle moments that make you question if you belong and why building this community changes everything.', content: 'The subtle moments that make you question if you belong and why building this community changes everything.', category: 'Identity', _color: '#1a5db5' },
+  { id: 'h3', author_init: 'YI', author_name: 'Yusuf Ibraahim', created_at: '2024-01-01', title: "Building Somalia's first fintech startup from Hargeisa", excerpt: 'No VC network. No Silicon Valley backing. Just a real problem and a community worth building for.', content: 'No VC network. No Silicon Valley backing. Just a real problem and a community worth building for.', category: 'Building', _color: '#255b99' },
+  { id: 'h4', author_init: 'FN', author_name: 'Faadumo Nuur', created_at: '2023-12-01', title: 'Why I turned down a $200k offer to work on Somali AI', excerpt: 'The most important use of my ML skills is not somewhere far away. It is here.', content: 'The most important use of my ML skills is not somewhere far away. It is here.', category: 'Career', _color: '#6aaae8' },
 ]
 
 function readStorage(key, fallback) {
@@ -289,6 +289,19 @@ function HageHubWorkspace({ user, onLogout }) {
   })
   const [myMentorRequests, setMyMentorRequests] = useState([])
   const [workTab, setWorkTab] = useState('all')
+  const [allJobs, setAllJobs] = useState(() => {
+    try {
+      const posted = JSON.parse(localStorage.getItem('hh_posted_jobs') || '[]')
+      return [...jobs, ...posted]
+    } catch { return [...jobs] }
+  })
+  const [appliedJobs, setAppliedJobs] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('hh_applications') || '[]') } catch { return [] }
+  })
+  const [applyModal, setApplyModal] = useState(null)
+  const [applyForm, setApplyForm] = useState({ name: '', email: '', message: '' })
+  const [postJobModal, setPostJobModal] = useState(false)
+  const [postJobForm, setPostJobForm] = useState({ company: '', title: '', loc: '', type: 'Full-time', salary: '', remote: false, somali: false, url: '', description: '' })
   const [buildTab, setBuildTab] = useState('all')
   const [projects, setProjects] = useState([])
   const [joinedProjects, setJoinedProjects] = useState([])
@@ -350,6 +363,11 @@ function HageHubWorkspace({ user, onLogout }) {
   const [profileForm, setProfileForm] = useState({ name: user?.name ?? '', bio: '' })
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileMessage, setProfileMessage] = useState('')
+  const [stories, setStories] = useState(HARDCODED_STORIES)
+  const [showWriteModal, setShowWriteModal] = useState(false)
+  const [selectedStory, setSelectedStory] = useState(null)
+  const [storyForm, setStoryForm] = useState({ title: '', excerpt: '', content: '', category: 'Career' })
+  const [storyLoading, setStoryLoading] = useState(false)
 
   // Supabase state
   const [questions, setQuestions] = useState([])
@@ -514,7 +532,8 @@ function HageHubWorkspace({ user, onLogout }) {
       .from('project_members')
       .select('user_id, user_name, joined_at')
       .eq('project_id', activeProject.id)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) console.error('Members fetch error:', error)
         setActiveProjectMembers(data || [])
       })
   }, [activeProject?.id])
@@ -551,16 +570,97 @@ function HageHubWorkspace({ user, onLogout }) {
     return () => supabase.removeChannel(channel)
   }, [activeProject?.id])
 
+  // Load stories from Supabase on mount
+  useEffect(() => {
+    supabase
+      .from('stories')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data && data.length > 0) setStories(data)
+      })
+  }, [])
+
+  async function publishStory() {
+    if (!storyForm.title.trim() || !storyForm.excerpt.trim() || storyForm.content.trim().length < 100) return
+    setStoryLoading(true)
+    const name = user?.user_metadata?.name || user?.name || 'Anonymous'
+    const { data, error } = await supabase
+      .from('stories')
+      .insert([{
+        title: storyForm.title.trim(),
+        excerpt: storyForm.excerpt.trim(),
+        content: storyForm.content.trim(),
+        category: storyForm.category,
+        author_id: user?.id,
+        author_name: name,
+        author_init: name.substring(0, 2).toUpperCase(),
+      }])
+      .select()
+      .single()
+    setStoryLoading(false)
+    if (error) { showToast('Failed to publish. Try again.'); return }
+    setStories(prev => [data, ...prev])
+    setShowWriteModal(false)
+    setStoryForm({ title: '', excerpt: '', content: '', category: 'Career' })
+    showToast('Story published! 🎉')
+  }
+
   function showToast(msg) {
     setToastMsg(msg)
     setTimeout(() => setToastMsg(''), 4000)
   }
 
-  async function handleProjectClick(project) {
+  function openApplyModal(job) {
+    setApplyForm({
+      name: user?.user_metadata?.name || user?.name || '',
+      email: user?.email || '',
+      message: '',
+    })
+    setApplyModal(job)
+  }
+
+  function submitApplication() {
+    const apps = JSON.parse(localStorage.getItem('hh_applications') || '[]')
+    apps.push({ job: applyModal.title, company: applyModal.company, appliedAt: new Date().toISOString() })
+    localStorage.setItem('hh_applications', JSON.stringify(apps))
+    setAppliedJobs(apps)
+    setApplyModal(null)
+    showToast('Application submitted! Good luck 🎉')
+  }
+
+  function submitPostJob() {
+    if (!postJobForm.company.trim() || !postJobForm.title.trim()) return
+    const tags = [
+      postJobForm.type === 'Full-time' ? 'ft' : postJobForm.type === 'Internship' ? 'int' : 'con',
+      ...(postJobForm.remote ? ['rem'] : []),
+      ...(postJobForm.somali ? ['som'] : []),
+    ]
+    const newJob = {
+      logo: postJobForm.company.trim().substring(0, 2).toUpperCase(),
+      company: postJobForm.company.trim(),
+      title: postJobForm.title.trim(),
+      loc: postJobForm.loc.trim() || 'Remote',
+      salary: postJobForm.salary.trim() || 'Competitive',
+      tags,
+      logoBg: '#f4f7fb',
+      logoColor: '#334155',
+      type: postJobForm.type,
+      posted: 'Just now',
+      url: postJobForm.url.trim() || '#',
+    }
+    const posted = JSON.parse(localStorage.getItem('hh_posted_jobs') || '[]')
+    posted.push(newJob)
+    localStorage.setItem('hh_posted_jobs', JSON.stringify(posted))
+    setAllJobs(prev => [newJob, ...prev])
+    setPostJobModal(false)
+    setPostJobForm({ company: '', title: '', loc: '', type: 'Full-time', salary: '', remote: false, somali: false, url: '', description: '' })
+    showToast('Job posted! The community can now apply.')
+  }
+
+  function handleProjectClick(project) {
     setActiveProject(project)
     setProjectCommentInput('')
-    const members = await fetchProjectMembers(project.id).catch(() => [])
-    setActiveProjectMembers(members)
   }
 
   async function handleJoinProject(project) {
@@ -1592,8 +1692,8 @@ ${codeExplanation.content}`
                 </form>
               </div>
             ) : (
-              <div className="px-6 py-6">
-                <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
+              <div className="px-4 py-4 sm:px-6 sm:py-6">
+                <div className="grid gap-6 md:grid-cols-[1fr_420px]">
                   <div className="space-y-4">
                     <textarea
                       value={codeInput}
@@ -1601,7 +1701,7 @@ ${codeExplanation.content}`
                       placeholder="Paste any code here - Python, JavaScript, HTML, anything..."
                       style={{
                         width: '100%',
-                        minHeight: 180,
+                        minHeight: 150,
                         fontFamily: 'monospace',
                         fontSize: 13,
                         padding: 16,
@@ -1611,6 +1711,7 @@ ${codeExplanation.content}`
                         color: '#a8d8a8',
                         resize: 'vertical',
                         outline: 'none',
+                        boxSizing: 'border-box',
                       }}
                     />
                     <select value={codeLanguage} onChange={(event) => setCodeLanguage(event.target.value)} className="w-full rounded-[12px] border border-[#dce6f5] bg-white px-4 py-3 text-sm text-slate-700 outline-none">
@@ -1618,16 +1719,16 @@ ${codeExplanation.content}`
                         <option key={option}>{option}</option>
                       ))}
                     </select>
-                    <div className="flex flex-wrap gap-3">
-                      <button type="button" onClick={() => explainCode('so')} disabled={codeExplainLoading} className="rounded-[12px] bg-[#4189DD] px-5 py-3 text-sm font-medium text-white transition disabled:opacity-50">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
+                      <button type="button" onClick={() => explainCode('so')} disabled={codeExplainLoading} className="w-full rounded-[12px] bg-[#4189DD] px-5 py-3 text-sm font-medium text-white transition disabled:opacity-50 sm:w-auto">
                         🇸🇴 Explain in Somali
                       </button>
-                      <button type="button" onClick={() => explainCode('en')} disabled={codeExplainLoading} className="rounded-[12px] border border-[#dce6f5] bg-white px-5 py-3 text-sm font-medium text-slate-600 transition disabled:opacity-50">
+                      <button type="button" onClick={() => explainCode('en')} disabled={codeExplainLoading} className="w-full rounded-[12px] border border-[#dce6f5] bg-white px-5 py-3 text-sm font-medium text-slate-600 transition disabled:opacity-50 sm:w-auto">
                         🇬🇧 Explain in English
                       </button>
                     </div>
                   </div>
-                  <div className="rounded-[22px] border border-[#193150] bg-[#0f1d35] p-5 text-white shadow-[0_16px_40px_rgba(15,29,53,0.24)]">
+                  <div className="rounded-[22px] border border-[#193150] bg-[#0f1d35] p-5 text-white shadow-[0_16px_40px_rgba(15,29,53,0.24)]" style={{ minHeight: 200 }}>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded-full bg-[#17345e] px-3 py-1 text-[11px] font-semibold text-[#c8dff7]">
                         {codeExplanation?.outputLang === 'en' ? '🇬🇧 English Explanation' : '🇸🇴 Somali Explanation'}
@@ -2010,6 +2111,68 @@ ${codeExplanation.content}`
 
         {currentPage === 'jobs' ? (
           <div>
+            {/* Apply Modal */}
+            {applyModal && (
+              <div onClick={() => setApplyModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(12,18,32,0.6)', zIndex: 200, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto', backdropFilter: 'blur(4px)' }}>
+                <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 520, padding: '32px', boxShadow: '0 24px 80px rgba(0,0,0,.18)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 26, fontWeight: 700, color: '#0c1220', lineHeight: 1.2 }}>{applyModal.title}</div>
+                      <div style={{ fontSize: 13, color: '#8a9bbf', marginTop: 4 }}>{applyModal.company} · {applyModal.loc}</div>
+                    </div>
+                    <button onClick={() => setApplyModal(null)} style={{ background: 'none', border: '1px solid #dce6f5', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 13, color: '#8a9bbf', flexShrink: 0 }}>✕</button>
+                  </div>
+                  <input value={applyForm.name} onChange={e => setApplyForm(f => ({ ...f, name: e.target.value }))} placeholder="Your name" style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #dce6f5', borderRadius: 10, fontSize: 13, fontFamily: 'DM Sans, sans-serif', color: '#0c1220', background: '#f4f7fb', outline: 'none', boxSizing: 'border-box' }} />
+                  <input value={applyForm.email} onChange={e => setApplyForm(f => ({ ...f, email: e.target.value }))} placeholder="Your email" type="email" style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #dce6f5', borderRadius: 10, fontSize: 13, fontFamily: 'DM Sans, sans-serif', color: '#0c1220', background: '#f4f7fb', outline: 'none', boxSizing: 'border-box' }} />
+                  <div>
+                    <textarea value={applyForm.message} onChange={e => setApplyForm(f => ({ ...f, message: e.target.value.slice(0, 300) }))} placeholder="Why are you a good fit for this role? (optional)" rows={4} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #dce6f5', borderRadius: 10, fontSize: 13, fontFamily: 'DM Sans, sans-serif', color: '#0c1220', background: '#f4f7fb', outline: 'none', resize: 'vertical', boxSizing: 'border-box', lineHeight: 1.6 }} />
+                    <div style={{ fontSize: 11, color: '#8a9bbf', textAlign: 'right', marginTop: 4 }}>{applyForm.message.length}/300</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <button onClick={() => setApplyModal(null)} style={{ padding: '10px 20px', border: '1.5px solid #dce6f5', background: '#fff', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', color: '#3d4f6e' }}>Cancel</button>
+                    <button onClick={submitApplication} disabled={!applyForm.name.trim()} style={{ padding: '10px 24px', border: 'none', background: applyForm.name.trim() ? '#4189DD' : '#dce6f5', color: applyForm.name.trim() ? '#fff' : '#8a9bbf', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: applyForm.name.trim() ? 'pointer' : 'not-allowed', fontFamily: 'DM Sans, sans-serif' }}>Submit Application</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Post Job Modal */}
+            {postJobModal && (
+              <div onClick={() => setPostJobModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(12,18,32,0.6)', zIndex: 200, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto', backdropFilter: 'blur(4px)' }}>
+                <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 560, padding: '32px', boxShadow: '0 24px 80px rgba(0,0,0,.18)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 26, fontWeight: 700, color: '#0c1220' }}>Post a Job</div>
+                    <button onClick={() => setPostJobModal(false)} style={{ background: 'none', border: '1px solid #dce6f5', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 13, color: '#8a9bbf' }}>✕</button>
+                  </div>
+                  <input value={postJobForm.company} onChange={e => setPostJobForm(f => ({ ...f, company: e.target.value }))} placeholder="Company name *" style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #dce6f5', borderRadius: 10, fontSize: 13, fontFamily: 'DM Sans, sans-serif', color: '#0c1220', background: '#f4f7fb', outline: 'none', boxSizing: 'border-box' }} />
+                  <input value={postJobForm.title} onChange={e => setPostJobForm(f => ({ ...f, title: e.target.value }))} placeholder="Job title *" style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #dce6f5', borderRadius: 10, fontSize: 13, fontFamily: 'DM Sans, sans-serif', color: '#0c1220', background: '#f4f7fb', outline: 'none', boxSizing: 'border-box' }} />
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <input value={postJobForm.loc} onChange={e => setPostJobForm(f => ({ ...f, loc: e.target.value }))} placeholder="Location" style={{ flex: 1, padding: '10px 14px', border: '1.5px solid #dce6f5', borderRadius: 10, fontSize: 13, fontFamily: 'DM Sans, sans-serif', color: '#0c1220', background: '#f4f7fb', outline: 'none', boxSizing: 'border-box' }} />
+                    <select value={postJobForm.type} onChange={e => setPostJobForm(f => ({ ...f, type: e.target.value }))} style={{ flex: 1, padding: '10px 14px', border: '1.5px solid #dce6f5', borderRadius: 10, fontSize: 13, fontFamily: 'DM Sans, sans-serif', color: '#0c1220', background: '#f4f7fb', outline: 'none' }}>
+                      {['Full-time', 'Internship', 'Contract'].map(t => <option key={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <input value={postJobForm.salary} onChange={e => setPostJobForm(f => ({ ...f, salary: e.target.value }))} placeholder="Salary / compensation (e.g. $120k or Competitive)" style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #dce6f5', borderRadius: 10, fontSize: 13, fontFamily: 'DM Sans, sans-serif', color: '#0c1220', background: '#f4f7fb', outline: 'none', boxSizing: 'border-box' }} />
+                  <div style={{ display: 'flex', gap: 20 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#3d4f6e', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={postJobForm.remote} onChange={e => setPostJobForm(f => ({ ...f, remote: e.target.checked }))} />
+                      Remote
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#3d4f6e', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={postJobForm.somali} onChange={e => setPostJobForm(f => ({ ...f, somali: e.target.checked }))} />
+                      🇸🇴 Somali-friendly
+                    </label>
+                  </div>
+                  <input value={postJobForm.url} onChange={e => setPostJobForm(f => ({ ...f, url: e.target.value }))} placeholder="Application URL (where candidates apply)" style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #dce6f5', borderRadius: 10, fontSize: 13, fontFamily: 'DM Sans, sans-serif', color: '#0c1220', background: '#f4f7fb', outline: 'none', boxSizing: 'border-box' }} />
+                  <textarea value={postJobForm.description} onChange={e => setPostJobForm(f => ({ ...f, description: e.target.value }))} placeholder="Job description..." rows={4} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #dce6f5', borderRadius: 10, fontSize: 13, fontFamily: 'DM Sans, sans-serif', color: '#0c1220', background: '#f4f7fb', outline: 'none', resize: 'vertical', boxSizing: 'border-box', lineHeight: 1.6 }} />
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <button onClick={() => setPostJobModal(false)} style={{ padding: '10px 20px', border: '1.5px solid #dce6f5', background: '#fff', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', color: '#3d4f6e' }}>Cancel</button>
+                    <button onClick={submitPostJob} disabled={!postJobForm.company.trim() || !postJobForm.title.trim()} style={{ padding: '10px 24px', border: 'none', background: (postJobForm.company.trim() && postJobForm.title.trim()) ? '#4189DD' : '#dce6f5', color: (postJobForm.company.trim() && postJobForm.title.trim()) ? '#fff' : '#8a9bbf', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>Post Job</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Header */}
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
@@ -2019,6 +2182,7 @@ ${codeExplanation.content}`
               </div>
               <button
                 type="button"
+                onClick={() => setPostJobModal(true)}
                 className="shrink-0 rounded-full bg-[#4189DD] px-5 py-3 text-sm font-medium text-white shadow-[0_6px_18px_rgba(65,137,221,0.28)] transition hover:bg-[#1a5db5]"
               >
                 + Post a Job
@@ -2043,7 +2207,7 @@ ${codeExplanation.content}`
 
             {/* Job cards */}
             {(() => {
-              const filtered = jobs.filter((job) => {
+              const filtered = allJobs.filter((job) => {
                 if (workTab === 'all') return true
                 return job.tags.includes(workTab)
               })
@@ -2056,38 +2220,45 @@ ${codeExplanation.content}`
               }
               return (
                 <div className="grid gap-4 lg:grid-cols-2">
-                  {filtered.map((job) => (
-                    <article key={`${job.company}-${job.title}`}
-                      className="flex gap-4 rounded-[20px] border border-[#dce6f5] bg-white p-5 transition hover:-translate-y-0.5 hover:border-[#4189DD] hover:shadow-[0_10px_28px_rgba(65,137,221,0.08)]">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] font-display text-sm font-bold"
-                        style={{ backgroundColor: job.logoBg, color: job.logoColor }}>
-                        {job.logo}
-                      </div>
-                      <div className="flex flex-1 flex-col gap-2">
-                        <div>
-                          <p className="font-semibold text-slate-900">{job.title}</p>
-                          <p className="text-sm text-slate-500">{job.company} · {job.loc}</p>
+                  {filtered.map((job, idx) => {
+                    const applied = appliedJobs.some(a => a.job === job.title && a.company === job.company)
+                    return (
+                      <article key={`${job.company}-${job.title}-${idx}`}
+                        className="flex gap-4 rounded-[20px] border border-[#dce6f5] bg-white p-5 transition hover:-translate-y-0.5 hover:border-[#4189DD] hover:shadow-[0_10px_28px_rgba(65,137,221,0.08)]">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] font-display text-sm font-bold"
+                          style={{ backgroundColor: job.logoBg, color: job.logoColor }}>
+                          {job.logo}
                         </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full bg-[#eaf2fd] px-3 py-1 text-[11px] font-semibold text-[#1a5db5]">{job.type}</span>
-                          <span className="rounded-full bg-[#f4f7fb] px-3 py-1 text-[11px] font-semibold text-slate-600">{job.salary}</span>
-                          {job.tags.includes('rem') && (
-                            <span className="rounded-full bg-[#e8f5ee] px-3 py-1 text-[11px] font-semibold text-[#1a6b4a]">Remote</span>
-                          )}
-                          {job.tags.includes('som') && (
-                            <span className="rounded-full bg-[#f3f0ff] px-3 py-1 text-[11px] font-semibold text-[#5b3fa0]">🇸🇴 Somali-friendly</span>
-                          )}
+                        <div className="flex flex-1 flex-col gap-2">
+                          <div>
+                            <p className="font-semibold text-slate-900">{job.title}</p>
+                            <p className="text-sm text-slate-500">{job.company} · {job.loc}</p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-[#eaf2fd] px-3 py-1 text-[11px] font-semibold text-[#1a5db5]">{job.type}</span>
+                            <span className="rounded-full bg-[#f4f7fb] px-3 py-1 text-[11px] font-semibold text-slate-600">{job.salary}</span>
+                            {job.tags.includes('rem') && (
+                              <span className="rounded-full bg-[#e8f5ee] px-3 py-1 text-[11px] font-semibold text-[#1a6b4a]">Remote</span>
+                            )}
+                            {job.tags.includes('som') && (
+                              <span className="rounded-full bg-[#f3f0ff] px-3 py-1 text-[11px] font-semibold text-[#5b3fa0]">🇸🇴 Somali-friendly</span>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] text-slate-400">Posted {job.posted}</span>
+                            {applied ? (
+                              <span className="rounded-full bg-[#dcfce7] px-4 py-1.5 text-xs font-semibold text-[#16a34a]">✓ Applied</span>
+                            ) : (
+                              <button type="button" onClick={() => openApplyModal(job)}
+                                className="rounded-full bg-[#4189DD] px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-[#1a5db5]">
+                                Apply {'->'}
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] text-slate-400">Posted {job.posted}</span>
-                          <a href={job.url} target="_blank" rel="noopener noreferrer"
-                            className="rounded-full bg-[#4189DD] px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-[#1a5db5]">
-                            Apply {'->'}
-                          </a>
-                        </div>
-                      </div>
-                    </article>
-                  ))}
+                      </article>
+                    )
+                  })}
                 </div>
               )
             })()}
@@ -2096,7 +2267,7 @@ ${codeExplanation.content}`
             <div className="mt-8 rounded-[20px] border border-[#dce6f5] bg-white p-6 text-center">
               <p className="font-display text-2xl text-slate-950">Hiring Somali talent?</p>
               <p className="mt-2 text-sm text-slate-500">Post your role and reach engineers, designers, and founders in the diaspora and East Africa.</p>
-              <button type="button" className="mt-4 rounded-full bg-[#4189DD] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#1a5db5]">
+              <button type="button" onClick={() => setPostJobModal(true)} className="mt-4 rounded-full bg-[#4189DD] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#1a5db5]">
                 Post a Job — Free
               </button>
             </div>
@@ -2105,31 +2276,104 @@ ${codeExplanation.content}`
 
         {currentPage === 'stories' ? (
           <div>
+            {/* Write Story Modal */}
+            {showWriteModal && (
+              <div onClick={() => setShowWriteModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(12,18,32,0.6)', zIndex: 200, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto', backdropFilter: 'blur(4px)' }}>
+                <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 600, padding: '32px', boxShadow: '0 24px 80px rgba(0,0,0,.18)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 28, fontWeight: 700, color: '#0c1220' }}>Write a Story</div>
+                    <button onClick={() => setShowWriteModal(false)} style={{ background: 'none', border: '1px solid #dce6f5', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 13, color: '#8a9bbf' }}>✕</button>
+                  </div>
+                  <select value={storyForm.category} onChange={e => setStoryForm(f => ({ ...f, category: e.target.value }))} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #dce6f5', borderRadius: 10, fontSize: 13, fontFamily: 'DM Sans, sans-serif', color: '#0c1220', background: '#f4f7fb', outline: 'none' }}>
+                    {['Career', 'Identity', 'Learning', 'Building', 'Community', 'Diaspora'].map(c => <option key={c}>{c}</option>)}
+                  </select>
+                  <input
+                    value={storyForm.title}
+                    onChange={e => setStoryForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder="Your story title..."
+                    style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #dce6f5', borderRadius: 10, fontSize: 14, fontFamily: 'DM Sans, sans-serif', color: '#0c1220', background: '#f4f7fb', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                  <div>
+                    <textarea
+                      value={storyForm.excerpt}
+                      onChange={e => setStoryForm(f => ({ ...f, excerpt: e.target.value.slice(0, 200) }))}
+                      placeholder="A short preview that draws readers in..."
+                      rows={3}
+                      style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #dce6f5', borderRadius: 10, fontSize: 13, fontFamily: 'DM Sans, sans-serif', color: '#0c1220', background: '#f4f7fb', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
+                    />
+                    <div style={{ fontSize: 11, color: '#8a9bbf', textAlign: 'right', marginTop: 4 }}>{storyForm.excerpt.length}/200</div>
+                  </div>
+                  <div>
+                    <textarea
+                      value={storyForm.content}
+                      onChange={e => setStoryForm(f => ({ ...f, content: e.target.value }))}
+                      placeholder="Tell your full story here..."
+                      style={{ width: '100%', minHeight: 250, padding: '12px 14px', border: '1.5px solid #dce6f5', borderRadius: 10, fontSize: 13, fontFamily: 'DM Sans, sans-serif', color: '#0c1220', background: '#f4f7fb', outline: 'none', resize: 'vertical', boxSizing: 'border-box', lineHeight: 1.7 }}
+                    />
+                    {storyForm.content.trim().length > 0 && storyForm.content.trim().length < 100 && (
+                      <div style={{ fontSize: 11, color: '#e11d48', marginTop: 4 }}>{100 - storyForm.content.trim().length} more characters needed</div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <button onClick={() => setShowWriteModal(false)} style={{ padding: '10px 20px', border: '1.5px solid #dce6f5', background: '#fff', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', color: '#3d4f6e' }}>Cancel</button>
+                    <button onClick={publishStory} disabled={storyLoading || !storyForm.title.trim() || !storyForm.excerpt.trim() || storyForm.content.trim().length < 100} style={{ padding: '10px 24px', border: 'none', background: (storyForm.title.trim() && storyForm.excerpt.trim() && storyForm.content.trim().length >= 100) ? '#4189DD' : '#dce6f5', color: (storyForm.title.trim() && storyForm.excerpt.trim() && storyForm.content.trim().length >= 100) ? '#fff' : '#8a9bbf', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+                      {storyLoading ? 'Publishing...' : 'Publish Story'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Read Story Modal */}
+            {selectedStory && (
+              <div onClick={() => setSelectedStory(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(12,18,32,0.7)', zIndex: 200, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto', backdropFilter: 'blur(4px)' }}>
+                <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 20, maxWidth: 680, width: '100%', padding: '40px 48px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                    <span style={{ padding: '4px 12px', background: '#eaf2fd', color: '#4189DD', borderRadius: 100, fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>{selectedStory.category}</span>
+                    <button onClick={() => setSelectedStory(null)} style={{ background: 'none', border: '1px solid #dce6f5', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 13, color: '#8a9bbf' }}>✕ Close</button>
+                  </div>
+                  <h1 style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 36, fontWeight: 700, color: '#0c1220', marginBottom: 16, lineHeight: 1.2 }}>{selectedStory.title}</h1>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 32, paddingBottom: 24, borderBottom: '1px solid #dce6f5' }}>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: selectedStory._color || '#4189DD', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, color: '#fff' }}>{selectedStory.author_init}</div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#0c1220' }}>{selectedStory.author_name}</div>
+                      <div style={{ fontSize: 12, color: '#8a9bbf' }}>{new Date(selectedStory.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 16, lineHeight: 1.8, color: '#3d4f6e', whiteSpace: 'pre-wrap' }}>{selectedStory.content}</div>
+                </div>
+              </div>
+            )}
+
             <div className="mb-6 flex items-center justify-between gap-4">
               <div>
                 <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">Stories</p>
                 <h2 className="font-display text-4xl text-slate-950">Somali excellence, out loud.</h2>
               </div>
-              <button className="rounded-full bg-[#4189DD] px-5 py-3 text-sm font-medium text-white">Write a Story</button>
+              <button onClick={() => setShowWriteModal(true)} className="rounded-full bg-[#4189DD] px-5 py-3 text-sm font-medium text-white">Write a Story</button>
             </div>
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-              {stories.map(([bg, init, sInit, name, date, title, excerpt, cat]) => (
-                <article key={title} className="overflow-hidden rounded-[20px] border border-[#dce6f5] bg-white transition hover:-translate-y-0.5 hover:shadow-[0_10px_28px_rgba(65,137,221,0.08)]">
-                  <div className="relative flex h-36 items-end overflow-hidden p-4" style={{ backgroundColor: bg }}>
-                    <div className="absolute inset-0 flex items-center justify-center font-display text-[110px] font-bold text-white/10">{sInit}</div>
-                    <span className="relative rounded-full bg-white/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur">{cat}</span>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-display text-2xl leading-tight text-slate-950">{title}</h3>
-                    <p className="mt-2 text-sm leading-7 text-slate-600">{excerpt}</p>
-                    <div className="mt-4 flex items-center gap-2">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#eaf2fd] text-[10px] font-bold text-[#1a5db5]">{init}</div>
-                      <span className="text-sm font-medium text-slate-600">{name}</span>
-                      <span className="ml-auto text-xs text-slate-400">{date}</span>
+              {stories.map((story) => {
+                const bg = story._color || getAvatarColor(story.author_name)
+                const sInit = (story.author_name || '?')[0]
+                return (
+                  <article key={story.id} onClick={() => setSelectedStory(story)} className="overflow-hidden rounded-[20px] border border-[#dce6f5] bg-white transition hover:-translate-y-0.5 hover:shadow-[0_10px_28px_rgba(65,137,221,0.08)]" style={{ cursor: 'pointer' }}>
+                    <div className="relative flex h-36 items-end overflow-hidden p-4" style={{ backgroundColor: bg }}>
+                      <div className="absolute inset-0 flex items-center justify-center font-display text-[110px] font-bold text-white/10">{sInit}</div>
+                      <span className="relative rounded-full bg-white/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur">{story.category}</span>
                     </div>
-                  </div>
-                </article>
-              ))}
+                    <div className="p-4">
+                      <h3 className="font-display text-2xl leading-tight text-slate-950">{story.title}</h3>
+                      <p className="mt-2 text-sm leading-7 text-slate-600">{story.excerpt}</p>
+                      <div className="mt-4 flex items-center gap-2">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#eaf2fd] text-[10px] font-bold text-[#1a5db5]">{story.author_init}</div>
+                        <span className="text-sm font-medium text-slate-600">{story.author_name}</span>
+                        <span className="ml-auto text-xs text-slate-400">{new Date(story.created_at).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}</span>
+                      </div>
+                    </div>
+                  </article>
+                )
+              })}
             </div>
           </div>
         ) : null}
