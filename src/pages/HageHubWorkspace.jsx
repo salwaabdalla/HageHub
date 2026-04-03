@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { contributors as seededContributors } from '../data/questions'
+
 import { QuestionCard } from '../components/knowledge/QuestionCard'
 import { AskModal } from '../components/knowledge/AskModal'
 import { fetchQuestions, insertQuestion } from '../lib/db/questions'
@@ -381,7 +381,7 @@ function HageHubWorkspace({ user, onLogout }) {
   const currentNavItem = topNavItems.find((item) => item.page === currentPage) ?? topNavItems[0]
   const availableTags = [...new Set(questions.flatMap((question) => question.tags ?? []))]
   const sidebarTags = availableTags.length ? availableTags : FALLBACK_TAGS
-  const visibleContributors = topContributors.length ? topContributors : seededContributors
+
   const filteredQuestions = questions
     .filter((question) => {
       if (knowledgeFilter === 'so') return question.lang === 'so' || question.lang === 'both'
@@ -459,7 +459,6 @@ function HageHubWorkspace({ user, onLogout }) {
       })
       .catch((err) => {
         console.error('Failed to load contributors:', err)
-        setTopContributors((prev) => (prev.length ? prev : seededContributors))
       })
   }, [])
 
@@ -1149,7 +1148,7 @@ ${codeExplanation.content}`
                     Dashboard
                   </p>
                   <h1 className="mt-4 font-display text-5xl leading-none tracking-tight text-slate-950 sm:text-6xl">
-                    Asc, <span className="text-[#4189DD]">{user?.name}</span>
+                    Welcome  <span className="text-[#4189DD]">{user?.name}</span>
                   </h1>
                   <p className="mt-4 max-w-2xl text-[15px] leading-8 text-slate-600">
                     Your next step in Hage Hub is shaped by what you want to learn, answer, and build with the community.
@@ -1229,17 +1228,31 @@ ${codeExplanation.content}`
                 <section className="rounded-[20px] border border-[#dce6f5] bg-white p-4 sm:p-5">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">Top Contributors</p>
                   <div className="mt-4 space-y-3">
-                    {topContributors.map((contributor, index) => (
-                      <div key={contributor.name} className="flex items-center gap-3 border-b border-[#dce6f5] pb-3 last:border-b-0 last:pb-0">
-                        <span className="w-5 font-display text-xl text-slate-400">{index + 1}.</span>
-                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#4189DD] text-xs font-semibold text-white">{initials(contributor.name)}</div>
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-slate-900">{contributor.name}</p>
-                          <p className="text-xs text-slate-400">{contributor.city}</p>
+                    {topContributors.length === 0 ? (
+                      [1, 2, 3].map((i) => (
+                        <div key={i} className="flex items-center gap-3 border-b border-[#dce6f5] pb-3 last:border-b-0 last:pb-0 animate-pulse">
+                          <span className="w-5 h-5 rounded bg-[#f4f7fb]" />
+                          <div className="h-9 w-9 rounded-full bg-[#f4f7fb]" />
+                          <div className="flex-1 space-y-1.5">
+                            <div className="h-3 w-24 rounded-full bg-[#f4f7fb]" />
+                            <div className="h-2.5 w-16 rounded-full bg-[#f4f7fb]" />
+                          </div>
+                          <div className="h-6 w-8 rounded bg-[#f4f7fb]" />
                         </div>
-                        <span className="font-display text-2xl text-[#4189DD]">{contributor.points}</span>
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      topContributors.map((contributor, index) => (
+                        <div key={contributor.name} className="flex items-center gap-3 border-b border-[#dce6f5] pb-3 last:border-b-0 last:pb-0">
+                          <span className="w-5 font-display text-xl text-slate-400">{index + 1}.</span>
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#4189DD] text-xs font-semibold text-white">{initials(contributor.name)}</div>
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-slate-900">{contributor.name}</p>
+                            <p className="text-xs text-slate-400">{contributor.city}</p>
+                          </div>
+                          <span className="font-display text-2xl text-[#4189DD]">{contributor.points}</span>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </section>
                 <section className="rounded-[20px] border border-[#dce6f5] bg-white p-4 sm:p-5">
@@ -1577,17 +1590,31 @@ ${codeExplanation.content}`
                 <section className="rounded-[20px] border border-[#dce6f5] bg-white p-5">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">Top Contributors</p>
                   <div className="mt-4 space-y-3">
-                    {visibleContributors.slice(0, 3).map((contributor, index) => (
-                      <div key={contributor.name} className="flex items-center gap-3">
-                        <span className="w-5 font-display text-xl text-slate-400">{index + 1}.</span>
-                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#4189DD] text-xs font-semibold text-white">{initials(contributor.name)}</div>
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-slate-900">{contributor.name}</p>
-                          <p className="text-xs text-slate-400">{contributor.city}</p>
+                    {topContributors.length === 0 ? (
+                      [1, 2, 3].map((i) => (
+                        <div key={i} className="flex items-center gap-3 animate-pulse">
+                          <span className="w-5 h-5 rounded bg-[#f4f7fb]" />
+                          <div className="h-9 w-9 rounded-full bg-[#f4f7fb]" />
+                          <div className="flex-1 space-y-1.5">
+                            <div className="h-3 w-24 rounded-full bg-[#f4f7fb]" />
+                            <div className="h-2.5 w-16 rounded-full bg-[#f4f7fb]" />
+                          </div>
+                          <div className="h-6 w-8 rounded bg-[#f4f7fb]" />
                         </div>
-                        <span className="font-display text-lg text-[#4189DD]">{contributor.points}</span>
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      topContributors.slice(0, 3).map((contributor, index) => (
+                        <div key={contributor.name} className="flex items-center gap-3">
+                          <span className="w-5 font-display text-xl text-slate-400">{index + 1}.</span>
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#4189DD] text-xs font-semibold text-white">{initials(contributor.name)}</div>
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-slate-900">{contributor.name}</p>
+                            <p className="text-xs text-slate-400">{contributor.city}</p>
+                          </div>
+                          <span className="font-display text-lg text-[#4189DD]">{contributor.points}</span>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </section>
                 <section className="rounded-[20px] border border-[#dce6f5] bg-white p-5">

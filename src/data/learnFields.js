@@ -2,7 +2,7 @@ const FIELDS = [
   {
     id: 'webdev', name: 'Web Development', emoji: '🌐', color: '#4189DD', bg: '#eaf2fd',
     desc: 'HTML, CSS, JavaScript, React, Node.js — build anything on the web.',
-    chips: ['Frontend', 'Backend', 'Full-Stack'], members: 247, lessons: 18,
+    chips: ['Frontend', 'Backend', 'Full-Stack'], lessons: 18,
     mentors: [
       { init: 'YI', name: 'Yusuf Ibraahim', role: 'Full-Stack Eng.', company: 'Shopify', bio: '6 years building web apps. From Hargeisa to Shopify. I know the full journey.', chips: ['React', 'Node.js', 'TypeScript'], ans: 127, students: 23, rating: 4.9, online: true, color: '#4189DD' },
       { init: 'AA', name: 'Abdi Axmed', role: 'Senior SWE', company: 'Google', bio: 'Building web infrastructure at Google. Focused on performance and scalability.', chips: ['Next.js', 'Go', 'System Design'], ans: 89, students: 18, rating: 4.8, online: false, color: '#1a5db5' },
@@ -34,14 +34,12 @@ const FIELDS = [
       { init: 'AA', name: 'Abdi Axmed', color: '#0f3d82', role: 'mentor', msg: "Stick with React for the job market. Vue is great but React has 10x more job listings globally — and that gap is even bigger if you're applying internationally.", time: '2:35 PM', reactions: [{ emoji: '👆', count: 12, mine: false }] },
       { init: 'HA', name: 'Halimo A.', color: '#6aaae8', role: 'student', msg: "Also just finished the TypeScript module. The types feel annoying at first but now I can't imagine coding without them", time: '3:02 PM', reactions: [{ emoji: '💯', count: 6, mine: false }] },
     ],
-    onlineMembers: [
-      { init: 'YI', name: 'Yusuf I.', role: 'Mentor', color: '#0f3d82' }, { init: 'FA', name: 'Faadumo A.', role: 'Student', color: '#4189DD' }, { init: 'HM', name: 'Hodan M.', role: 'Mentor', color: '#1a5db5' }, { init: 'SA', name: 'Sagal A.', role: 'Student', color: '#6aaae8' },
-    ],
+    onlineMembers: [],
   },
   {
     id: 'cyber', name: 'Cybersecurity', emoji: '🔒', color: '#e11d48', bg: '#ffe4e6',
     desc: 'Ethical hacking, threat analysis, network security, and defense.',
-    chips: ['Blue Team', 'Red Team', 'OSCP'], members: 184, lessons: 16,
+    chips: ['Blue Team', 'Red Team', 'OSCP'], lessons: 16,
     mentors: [
       { init: 'AM', name: 'Amina Hassan', role: 'Security Engineer', company: 'CrowdStrike', bio: 'Red team specialist. 7 years in threat intelligence across Africa and the Gulf.', chips: ['Penetration Testing', 'OSCP', 'Threat Intel'], ans: 89, students: 15, rating: 4.8, online: true, color: '#e11d48' },
       { init: 'SO', name: 'Sagal Osman', role: 'SOC Analyst', company: 'Microsoft', bio: 'Blue team expert. Built SOC infrastructure for three African banks.', chips: ['SIEM', 'Incident Response', 'CompTIA'], ans: 56, students: 11, rating: 4.7, online: false, color: '#c01038' },
@@ -67,14 +65,12 @@ const FIELDS = [
       { init: 'AM', name: 'Amina Hassan', color: '#c01038', role: 'mentor', msg: "That first root hits different! Now try the Easy machines consistently before moving to Medium. The methodology matters more than the difficulty.", time: '11:45 AM', reactions: [{ emoji: '👆', count: 9, mine: false }] },
       { init: 'AW', name: 'Abdullahi W.', color: '#c01038', role: 'student', msg: 'Anyone else studying for Security+? Want to form a study group', time: '1:15 PM', reactions: [] },
     ],
-    onlineMembers: [
-      { init: 'AM', name: 'Amina H.', role: 'Mentor', color: '#e11d48' }, { init: 'YN', name: 'Yusuf N.', role: 'Student', color: '#c01038' },
-    ],
+    onlineMembers: [],
   },
   {
     id: 'datascience', name: 'Data Science', emoji: '📊', color: '#7c3aed', bg: '#ede9fe',
     desc: 'Python, statistics, machine learning, and data visualization.',
-    chips: ['Analytics', 'ML', 'Python'], members: 203, lessons: 20,
+    chips: ['Analytics', 'ML', 'Python'], lessons: 20,
     mentors: [
       { init: 'FN', name: 'Faadumo Nuur', role: 'ML Engineer', company: 'Anthropic', bio: 'Working on LLMs. Building Somali AI tools. Committed to Somali representation in AI.', chips: ['PyTorch', 'NLP', 'LLMs', 'Python'], ans: 141, students: 27, rating: 5.0, online: true, color: '#7c3aed' },
       { init: 'HM', name: 'Hodan Mire', role: 'Data Scientist', company: 'McKinsey', bio: 'Applied data science across East Africa. Turning Somali data into impact.', chips: ['Python', 'R', 'SQL', 'Tableau'], ans: 78, students: 14, rating: 4.8, online: true, color: '#5b21b6' },
@@ -101,14 +97,12 @@ const FIELDS = [
       { init: 'FN', name: 'Faadumo N.', color: '#5b21b6', role: 'mentor', msg: "Hodan that's incredible! Real Somali data is so rare in ML. Please share the methodology too — this could inspire others to do the same.", time: '9:31 AM', reactions: [{ emoji: '💡', count: 8, mine: false }] },
       { init: 'AA', name: 'Abdi A.', color: '#7c3aed', role: 'student', msg: 'Tip: before any ML course, read "The Art of Statistics" by Spiegelhalter. Changed everything for me.', time: '10:05 AM', reactions: [{ emoji: '📖', count: 15, mine: true }] },
     ],
-    onlineMembers: [
-      { init: 'FN', name: 'Faadumo N.', role: 'Mentor', color: '#5b21b6' }, { init: 'HM', name: 'Hodan M.', role: 'Student', color: '#7c3aed' }, { init: 'AA', name: 'Abdi A.', role: 'Student', color: '#5b21b6' },
-    ],
+    onlineMembers: [],
   },
   {
     id: 'ai', name: 'AI & Machine Learning', emoji: '🤖', color: '#d97706', bg: '#fef3c7',
     desc: 'LLMs, neural networks, NLP, and building AI-powered products.',
-    chips: ['LLMs', 'NLP', 'PyTorch'], members: 312, lessons: 22,
+    chips: ['LLMs', 'NLP', 'PyTorch'], lessons: 22,
     mentors: [
       { init: 'FN', name: 'Faadumo Nuur', role: 'ML Engineer', company: 'Anthropic', bio: 'I train large language models. Somali AI is my mission — the language needs more representation.', chips: ['PyTorch', 'LLMs', 'NLP', 'Somali AI'], ans: 141, students: 27, rating: 5.0, online: true, color: '#d97706' },
       { init: 'AH', name: 'Ahmed Hassan', role: 'AI Research Eng.', company: 'DeepMind', bio: 'Research engineer. Published in NeurIPS. Helping Somali students get into AI research.', chips: ['Research', 'Transformers', 'Math'], ans: 67, students: 9, rating: 4.9, online: false, color: '#b45309' },
@@ -133,14 +127,12 @@ const FIELDS = [
       { init: 'FN', name: 'Faadumo N.', color: '#b45309', role: 'mentor', msg: "This is genuinely historic Hodan. The Somali language has almost zero ML representation. What you're building matters far beyond this community.", time: '9:01 AM', reactions: [{ emoji: '💙', count: 28, mine: false }] },
       { init: 'AA', name: 'Abdi A.', color: '#d97706', role: 'student', msg: 'For anyone scared of the math — watch 3Blue1Brown Essence of Linear Algebra first. All 15 videos. Then fast.ai. The fear disappears.', time: '10:30 AM', reactions: [{ emoji: '💯', count: 19, mine: false }] },
     ],
-    onlineMembers: [
-      { init: 'FN', name: 'Faadumo N.', role: 'Mentor', color: '#b45309' }, { init: 'HM', name: 'Hodan M.', role: 'Student', color: '#d97706' },
-    ],
+    onlineMembers: [],
   },
   {
     id: 'networking', name: 'Networking', emoji: '🌐', color: '#0d9488', bg: '#ccfbf1',
     desc: 'TCP/IP, routing, switching, cloud networking, and infrastructure.',
-    chips: ['CCNA', 'Cloud', 'Infrastructure'], members: 156, lessons: 14,
+    chips: ['CCNA', 'Cloud', 'Infrastructure'], lessons: 14,
     mentors: [
       { init: 'AW', name: 'Abdullahi Warsame', role: 'Network Engineer', company: 'Safaricom', bio: '9 years designing network infrastructure across East Africa. Building the next generation.', chips: ['CCNA', 'CCNP', 'AWS', 'Cisco'], ans: 93, students: 19, rating: 4.8, online: true, color: '#0d9488' },
     ],
@@ -160,12 +152,12 @@ const FIELDS = [
       { init: 'AW', name: 'Abdullahi W.', color: '#0d9488', role: 'student', msg: 'Study group for CCNA starting next week — Tuesday and Thursday 6pm EAT. Reply here if you want in!', time: '3:00 PM', reactions: [{ emoji: '✋', count: 11, mine: false }] },
       { init: 'AW', name: 'Abdullahi Warsame', color: '#0f766e', role: 'mentor', msg: 'Great initiative! I will sit in on the first session and answer questions. Pro tip: use Packet Tracer for every lab — do not just read the theory.', time: '3:15 PM', reactions: [{ emoji: '🙏', count: 8, mine: false }] },
     ],
-    onlineMembers: [{ init: 'AW', name: 'Abdullahi W.', role: 'Mentor', color: '#0d9488' }],
+    onlineMembers: [],
   },
   {
     id: 'mobile', name: 'Mobile Dev', emoji: '📱', color: '#16a34a', bg: '#dcfce7',
     desc: 'Build iOS and Android apps with React Native or Flutter.',
-    chips: ['iOS', 'Android', 'React Native'], members: 178, lessons: 15,
+    chips: ['iOS', 'Android', 'React Native'], lessons: 15,
     mentors: [
       { init: 'OM', name: 'Omar Mahad', role: 'Senior iOS Eng.', company: 'Spotify', bio: 'Built 12 apps shipped to App Store. React Native specialist.', chips: ['React Native', 'iOS', 'Swift', 'Expo'], ans: 76, students: 12, rating: 4.7, online: false, color: '#16a34a' },
     ],
@@ -184,12 +176,12 @@ const FIELDS = [
     chatMessages: [
       { init: 'SO', name: 'Sagal O.', color: '#16a34a', role: 'student', msg: 'Released my first app on Play Store! Somali-English dictionary. 200 downloads in the first week 🙌🙌🙌', time: '4:00 PM', reactions: [{ emoji: '🎉', count: 32, mine: false }, { emoji: '🔥', count: 18, mine: false }] },
     ],
-    onlineMembers: [{ init: 'SO', name: 'Sagal O.', role: 'Student', color: '#16a34a' }],
+    onlineMembers: [],
   },
   {
     id: 'devops', name: 'DevOps & Cloud', emoji: '⚙️', color: '#ea580c', bg: '#ffedd5',
     desc: 'Docker, Kubernetes, CI/CD, AWS, and cloud infrastructure.',
-    chips: ['Docker', 'Kubernetes', 'AWS'], members: 189, lessons: 16,
+    chips: ['Docker', 'Kubernetes', 'AWS'], lessons: 16,
     mentors: [
       { init: 'AA', name: 'Abdi Axmed', role: 'Senior SWE / SRE', company: 'Google', bio: "Running Google's SRE practice for EMEA. DevOps + cloud is the future of East Africa tech.", chips: ['Kubernetes', 'AWS', 'GCP', 'Terraform', 'CI/CD'], ans: 112, students: 21, rating: 4.9, online: true, color: '#ea580c' },
     ],
@@ -209,12 +201,12 @@ const FIELDS = [
       { init: 'YI', name: 'Yusuf I.', color: '#ea580c', role: 'student', msg: 'Got my AWS Solutions Architect cert yesterday! 6 weeks of studying alongside work. ACloudGuru + practice exams.', time: '9:00 AM', reactions: [{ emoji: '🏆', count: 24, mine: false }, { emoji: '🎉', count: 16, mine: true }] },
       { init: 'AA', name: 'Abdi Axmed', color: '#c2410c', role: 'mentor', msg: "Congratulations Yusuf!! AWS SA is a serious cert. Now target the Professional or a specialty cert. Your salary trajectory just changed.", time: '9:18 AM', reactions: [{ emoji: '💪', count: 14, mine: false }] },
     ],
-    onlineMembers: [{ init: 'AA', name: 'Abdi A.', role: 'Mentor', color: '#c2410c' }, { init: 'YI', name: 'Yusuf I.', role: 'Student', color: '#ea580c' }],
+    onlineMembers: [],
   },
   {
     id: 'backend', name: 'Backend Dev', emoji: '🗄️', color: '#0ea5e9', bg: '#e0f2fe',
     desc: 'APIs, databases, system design, and server architecture.',
-    chips: ['APIs', 'SQL', 'System Design'], members: 221, lessons: 17,
+    chips: ['APIs', 'SQL', 'System Design'], lessons: 17,
     mentors: [
       { init: 'HMR', name: 'Hodan Mire', role: 'Backend Engineer', company: 'Stripe', bio: 'Building payment infrastructure at Stripe. Backend is the backbone of every product.', chips: ['Go', 'PostgreSQL', 'Redis', 'System Design'], ans: 98, students: 17, rating: 4.8, online: true, color: '#0ea5e9' },
       { init: 'AA', name: 'Abdi Axmed', role: 'Senior SWE', company: 'Google', bio: 'Distributed systems at scale. I help Somali engineers think in systems.', chips: ['Go', 'gRPC', 'Kafka', 'Microservices'], ans: 89, students: 18, rating: 4.9, online: false, color: '#0284c7' },
@@ -236,7 +228,7 @@ const FIELDS = [
       { init: 'SO', name: 'Sagal O.', color: '#0ea5e9', role: 'student', msg: "Spent 3 hours debugging an N+1 query. ONE .include() in the ORM fixed it. Query time: 4s → 40ms. Always check your SQL!!", time: '2:30 PM', reactions: [{ emoji: '😭', count: 22, mine: false }, { emoji: '💡', count: 17, mine: false }] },
       { init: 'HMR', name: 'Hodan M.', color: '#0284c7', role: 'mentor', msg: "Classic lesson Sagal! N+1 issues destroy performance at scale. Use EXPLAIN ANALYZE on every slow query. And use a query profiler in development — catch these before production.", time: '2:48 PM', reactions: [{ emoji: '📌', count: 13, mine: false }] },
     ],
-    onlineMembers: [{ init: 'HMR', name: 'Hodan M.', role: 'Mentor', color: '#0284c7' }, { init: 'SO', name: 'Sagal O.', role: 'Student', color: '#0ea5e9' }],
+    onlineMembers: [],
   },
 ]
 

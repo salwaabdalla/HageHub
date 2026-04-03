@@ -66,13 +66,13 @@ function LessonModal({ lesson, completed, onMark, onClose, onAskAI }) {
         </div>
         <div style={{ padding: '18px 26px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: S.textSoft, marginBottom: 5 }}>🇬🇧 English</div>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: S.textSoft, marginBottom: 5 }}>English</div>
             <div style={{ fontSize: 13, color: S.textMid, lineHeight: 1.7 }}>
               {node.t} is a key topic in {field.name}. {node.s}. Mastering this gives you a strong foundation for the next steps in your learning journey.
             </div>
           </div>
           <div>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: S.textSoft, marginBottom: 5 }}>🇸🇴 Af Soomaali</div>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: S.textSoft, marginBottom: 5 }}>Af Soomaali</div>
             <div style={{ fontSize: 13, color: S.blueDeeper, lineHeight: 1.7, background: S.blueLight, padding: '12px 14px', borderRadius: 10, borderLeft: `3px solid ${S.blue}` }}>
               {node.t} waa mawduuc muhiim ah oo ku jira {field.name}. {node.s}. Bartaanku wuxuu kaa caawin doonaa tallaabooyinka xiga ee safarkaaga waxbarasho.
             </div>
@@ -107,7 +107,7 @@ function LessonModal({ lesson, completed, onMark, onClose, onAskAI }) {
 }
 
 // ─── Field Picker ──────────────────────────────────────────────────
-function FieldPicker({ fields, allFields, joined, completed, searchQuery, onSearch, onOpen, onToggleJoin, showToast, getProgress, onGoHome }) {
+function FieldPicker({ fields, allFields, joined, completed, searchQuery, onSearch, onOpen, onToggleJoin, showToast, getProgress, onGoHome, memberCounts = {} }) {
   return (
     <div style={{ maxWidth: 1140, margin: '0 auto', padding: '48px 24px' }}>
       <button
@@ -153,7 +153,7 @@ function FieldPicker({ fields, allFields, joined, completed, searchQuery, onSear
               const f = allFields.find(x => x.id === id)
               return f ? (
                 <span key={id} onClick={() => onOpen(id)} style={{ padding: '4px 12px', background: S.blue, color: '#fff', borderRadius: 100, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                  {f.emoji} {f.name}
+                  {f.name}
                 </span>
               ) : null
             })}
@@ -163,12 +163,11 @@ function FieldPicker({ fields, allFields, joined, completed, searchQuery, onSear
 
       {/* Search */}
       <div style={{ position: 'relative', marginBottom: 28, maxWidth: 400 }}>
-        <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 13 }}>🔍</span>
         <input
           value={searchQuery}
           onChange={e => onSearch(e.target.value)}
           placeholder="Search fields..."
-          style={{ width: '100%', padding: '10px 16px 10px 40px', border: `1.5px solid ${S.border}`, borderRadius: 100, fontSize: 13, fontFamily: "'DM Sans', sans-serif", color: S.text, background: '#fff', outline: 'none' }}
+          style={{ width: '100%', padding: '10px 16px', border: `1.5px solid ${S.border}`, borderRadius: 100, fontSize: 13, fontFamily: "'DM Sans', sans-serif", color: S.text, background: '#fff', outline: 'none' }}
         />
       </div>
 
@@ -186,7 +185,8 @@ function FieldPicker({ fields, allFields, joined, completed, searchQuery, onSear
               pct={pct}
               total={total}
               onOpen={() => onOpen(f.id)}
-              onToggleJoin={e => { e.stopPropagation(); onToggleJoin(f.id); showToast(isJoined ? 'Left community' : 'Joined! Welcome to the community 🎉') }}
+              onToggleJoin={e => { e.stopPropagation(); onToggleJoin(f.id); showToast(isJoined ? 'Left community' : 'Joined! Welcome to the community') }}
+              memberCount={memberCounts[f.id]}
             />
           )
         })}
@@ -195,7 +195,7 @@ function FieldPicker({ fields, allFields, joined, completed, searchQuery, onSear
   )
 }
 
-function FieldCard({ field: f, isJoined, pct, total, onOpen, onToggleJoin }) {
+function FieldCard({ field: f, isJoined, pct, total, onOpen, onToggleJoin, memberCount }) {
   const [hover, setHover] = useState(false)
   return (
     <div
@@ -215,13 +215,12 @@ function FieldCard({ field: f, isJoined, pct, total, onOpen, onToggleJoin }) {
       {isJoined && (
         <span style={{ position: 'absolute', top: 14, right: 14, padding: '3px 10px', borderRadius: 100, fontSize: 10, fontWeight: 700, background: S.greenLight, color: S.green, border: '1px solid #bbf7d0' }}>✓ Joined</span>
       )}
-      <div style={{ width: 48, height: 48, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, marginBottom: 16, background: f.bg, transition: 'transform .2s', transform: hover ? 'scale(1.08)' : 'none' }}>{f.emoji}</div>
       <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 700, color: S.text, marginBottom: 4 }}>{f.name}</div>
       <div style={{ fontSize: 12, color: S.textSoft, lineHeight: 1.55, marginBottom: 14 }}>{f.desc}</div>
       <div style={{ display: 'flex', gap: 14, marginBottom: 14 }}>
-        <span style={{ fontSize: 11, color: S.textSoft }}>👥 <span style={{ fontWeight: 700, color: S.textMid }}>{f.members.toLocaleString()}</span></span>
-        <span style={{ fontSize: 11, color: S.textSoft }}>📚 <span style={{ fontWeight: 700, color: S.textMid }}>{total}</span> lessons</span>
-        <span style={{ fontSize: 11, color: S.textSoft }}>🧭 <span style={{ fontWeight: 700, color: S.textMid }}>{f.mentors.length}</span> mentors</span>
+        <span style={{ fontSize: 11, color: S.textSoft }}><span style={{ fontWeight: 700, color: S.textMid }}>{memberCount != null ? memberCount.toLocaleString() : '...'}</span> members</span>
+        <span style={{ fontSize: 11, color: S.textSoft }}><span style={{ fontWeight: 700, color: S.textMid }}>{total}</span> lessons</span>
+        <span style={{ fontSize: 11, color: S.textSoft }}><span style={{ fontWeight: 700, color: S.textMid }}>{f.mentors.length}</span> mentors</span>
       </div>
       <div style={{ height: 3, borderRadius: 100, background: S.border, overflow: 'hidden', marginBottom: 5 }}>
         <div style={{ height: '100%', borderRadius: 100, background: f.color, width: `${pct}%`, transition: 'width .5s' }} />
@@ -247,15 +246,15 @@ function FieldCard({ field: f, isJoined, pct, total, onOpen, onToggleJoin }) {
 
 // ─── Hub Sidebar ───────────────────────────────────────────────────
 const HUB_NAV = [
-  { id: 'overview', icon: '🏠', label: 'Overview' },
-  { id: 'chat', icon: '💬', label: 'Group Chat' },
-  { id: 'mentors', icon: '🧭', label: 'Mentors' },
-  { id: 'roadmap', icon: '🗺️', label: 'Roadmap' },
-  { id: 'leaderboard', icon: '🏆', label: 'Leaderboard' },
-  { id: 'events', icon: '📅', label: 'Events', badge: '2', badgeGreen: true },
+  { id: 'overview', label: 'Overview' },
+  { id: 'chat', label: 'Group Chat' },
+  { id: 'mentors', label: 'Mentors' },
+  { id: 'roadmap', label: 'Roadmap' },
+  { id: 'leaderboard', label: 'Leaderboard' },
+  { id: 'events', label: 'Events', badge: '2', badgeGreen: true },
 ]
 
-function HubSidebar({ field: f, activePanel, onPanelChange, onBack, onlineCount, chatBadge }) {
+function HubSidebar({ field: f, activePanel, onPanelChange, onBack, onlineCount, onlineUsers = [], activeCount, chatBadge, memberCount }) {
   return (
     <div className="hub-sidebar" style={{ width: 220, minWidth: 220, background: '#fff', borderRight: `1px solid ${S.border}`, display: 'flex', flexDirection: 'column', overflowY: 'auto', flexShrink: 0 }}>
       <div style={{ padding: '18px 16px 12px', borderBottom: `1px solid ${S.border}` }}>
@@ -263,9 +262,13 @@ function HubSidebar({ field: f, activePanel, onPanelChange, onBack, onlineCount,
           <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><polyline points="15 18 9 12 15 6" /></svg>
           All Fields
         </button>
-        <div style={{ width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, marginBottom: 10, background: f.bg }}>{f.emoji}</div>
         <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, fontWeight: 700, color: S.text, marginBottom: 2 }}>{f.name}</div>
-        <div style={{ fontSize: 11, color: S.textSoft }}><strong style={{ color: S.green, fontWeight: 700 }}>{f.members.toLocaleString()}</strong> members</div>
+        <div style={{ fontSize: 11, color: S.textSoft }}>
+          <strong style={{ color: S.green, fontWeight: 700 }}>{memberCount != null ? memberCount.toLocaleString() : '...'}</strong> members
+          {activeCount != null && activeCount > 0 && (
+            <span style={{ color: S.textSoft }}> · <strong style={{ color: S.blue }}>{activeCount}</strong> active this week</span>
+          )}
+        </div>
       </div>
 
       <div style={{ padding: '10px 0', flex: 1 }}>
@@ -286,7 +289,6 @@ function HubSidebar({ field: f, activePanel, onPanelChange, onBack, onlineCount,
               transition: 'all .15s',
             }}>
               {active && <span style={{ position: 'absolute', left: -6, top: '50%', transform: 'translateY(-50%)', width: 3, height: 18, background: S.blue, borderRadius: '0 3px 3px 0' }} />}
-              <div style={{ width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, background: active ? 'rgba(65,137,221,.15)' : 'transparent' }}>{item.icon}</div>
               <span>{item.label}</span>
               {badge && (
                 <span style={{ marginLeft: 'auto', background: badgeBg, color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 100 }}>{badge}</span>
@@ -298,15 +300,19 @@ function HubSidebar({ field: f, activePanel, onPanelChange, onBack, onlineCount,
 
       <div style={{ padding: '12px 16px', borderTop: `1px solid ${S.border}` }}>
         <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: S.textSoft, marginBottom: 10 }}>Online Now</div>
-        {f.onlineMembers.map((m, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <div style={{ width: 26, height: 26, borderRadius: '50%', fontSize: 9, fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: m.color, position: 'relative' }}>
-              {m.init}
-              <span style={{ position: 'absolute', bottom: 0, right: 0, width: 7, height: 7, borderRadius: '50%', background: S.green, border: '2px solid #fff' }} />
+        {onlineUsers.length === 0 ? (
+          <p style={{ fontSize: 12, color: S.textSoft, margin: 0 }}>No one online right now</p>
+        ) : (
+          onlineUsers.map(u => (
+            <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <div style={{ width: 26, height: 26, borderRadius: '50%', fontSize: 9, fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: S.blue, position: 'relative' }}>
+                {u.init}
+                <div style={{ position: 'absolute', bottom: 0, right: 0, width: 7, height: 7, borderRadius: '50%', background: S.green, border: '2px solid #fff' }} />
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 500, color: S.textMid }}>{u.name}</div>
             </div>
-            <div style={{ fontSize: 12, fontWeight: 500, color: S.textMid }}>{m.name}</div>
-          </div>
-        ))}
+          ))
+        )}
         <div style={{ fontSize: 11, color: S.textSoft, marginTop: 8 }}>
           <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: S.green, marginRight: 5, verticalAlign: 'middle' }} />
           {onlineCount} online now
@@ -360,7 +366,7 @@ function MobileHubTabs({ activePanel, onPanelChange }) {
 }
 
 // ─── Overview Panel ────────────────────────────────────────────────
-function OverviewPanel({ field: f, completed, onSwitchPanel }) {
+function OverviewPanel({ field: f, completed, onSwitchPanel, memberCount }) {
   const total = f.phases.reduce((s, p) => s + p.nodes.length, 0)
   const done = Object.keys(completed).filter(k => k.startsWith(f.id + '_')).length
   const pct = total > 0 ? Math.round((done / total) * 100) : 0
@@ -369,7 +375,6 @@ function OverviewPanel({ field: f, completed, onSwitchPanel }) {
     <div style={{ padding: 28, maxWidth: 900 }}>
       <div style={{ background: '#fff', border: `1px solid ${S.border}`, borderTop: `3px solid ${f.color}`, borderRadius: S.radiusLg, padding: '28px 32px', marginBottom: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
-          <div style={{ width: 56, height: 56, borderRadius: 16, background: f.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>{f.emoji}</div>
           <div>
             <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 32, fontWeight: 700, color: S.text, marginBottom: 6 }}>{f.name}</div>
             <div style={{ fontSize: 14, color: S.textMid, lineHeight: 1.7, maxWidth: 560 }}>{f.desc}</div>
@@ -384,7 +389,7 @@ function OverviewPanel({ field: f, completed, onSwitchPanel }) {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22 }}>
         {[
-          { val: f.members.toLocaleString(), lbl: 'Members' },
+          { val: memberCount != null ? memberCount.toLocaleString() : '...', lbl: 'Members' },
           { val: f.mentors.length, lbl: 'Mentors' },
           { val: total, lbl: 'Lessons' },
           { val: `${pct}%`, lbl: 'Your Progress' },
@@ -461,7 +466,7 @@ function normalizeFieldMsg(msg, userId) {
   }
 }
 
-function ChatPanel({ field: f, user, userName, onSwitchPanel, onNewMessage, onlineCount }) {
+function ChatPanel({ field: f, user, userName, onSwitchPanel, onNewMessage, onlineCount, onlineUsers = [], memberCount }) {
   const [messages, setMessages] = useState([])
   const [inputVal, setInputVal] = useState('')
   const [replyingTo, setReplyingTo] = useState(null)
@@ -564,10 +569,9 @@ function ChatPanel({ field: f, user, userName, onSwitchPanel, onNewMessage, onli
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header */}
         <div style={{ padding: '14px 20px', borderBottom: `1px solid ${S.border}`, display: 'flex', alignItems: 'center', gap: 12, background: '#fff', flexShrink: 0 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, background: f.bg, flexShrink: 0 }}>{f.emoji}</div>
           <div>
             <div style={{ fontWeight: 700, fontSize: 14, color: S.text }}>{f.name} Community</div>
-            <div style={{ fontSize: 11, color: S.textSoft }}>{f.members.toLocaleString()} members</div>
+            <div style={{ fontSize: 11, color: S.textSoft }}>{memberCount != null ? memberCount.toLocaleString() : '...'} members</div>
           </div>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: S.green, fontWeight: 600 }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: S.green, display: 'inline-block' }} />
@@ -650,21 +654,7 @@ function ChatPanel({ field: f, user, userName, onSwitchPanel, onNewMessage, onli
               <button onClick={() => setReplyingTo(null)} style={{ fontSize: 14, color: S.textSoft, background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
             </div>
           )}
-          {pendingImage && (
-            <div style={{ background: S.bg, borderRadius: 8, padding: '6px 10px', marginBottom: 8, fontSize: 12, color: S.textMid, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>📎 Image ready — press send</span>
-              <button onClick={() => setPendingImage(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: S.textSoft }}>✕</button>
-            </div>
-          )}
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-              <button onClick={() => fileInputRef.current?.click()} style={{ width: 36, height: 36, borderRadius: 10, border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16 }}>🖼️</button>
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImage} style={{ display: 'none' }} />
-              <button onClick={() => {
-                const emojis = ['😊', '🔥', '💡', '👆', '🎉', '💯', '🙌', '❓', '📌', '🚀']
-                setInputVal(v => v + emojis[Math.floor(Math.random() * emojis.length)])
-              }} style={{ width: 36, height: 36, borderRadius: 10, border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16 }}>😊</button>
-            </div>
             <textarea
               ref={textareaRef}
               value={inputVal}
@@ -689,19 +679,19 @@ function ChatPanel({ field: f, user, userName, onSwitchPanel, onNewMessage, onli
       <div className="chat-sidebar" style={{ width: 240, borderLeft: `1px solid ${S.border}`, overflowY: 'auto', background: '#fff' }}>
         <div style={{ padding: '16px 16px 8px' }}>
           <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: S.textSoft, marginBottom: 12 }}>Online Now</div>
-          {f.onlineMembers.map((m, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
-              <div style={{ width: 30, height: 30, borderRadius: '50%', fontSize: 10, fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', flexShrink: 0, background: m.color }}>
-                {m.init}
-                <span style={{ position: 'absolute', bottom: 0, right: 0, width: 7, height: 7, borderRadius: '50%', background: S.green, border: '2px solid #fff' }} />
+          {onlineUsers.length === 0 ? (
+            <p style={{ fontSize: 12, color: S.textSoft, margin: 0 }}>No one online right now</p>
+          ) : (
+            onlineUsers.map(u => (
+              <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
+                <div style={{ width: 30, height: 30, borderRadius: '50%', fontSize: 10, fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', flexShrink: 0, background: S.blue }}>
+                  {u.init}
+                  <span style={{ position: 'absolute', bottom: 0, right: 0, width: 7, height: 7, borderRadius: '50%', background: S.green, border: '2px solid #fff' }} />
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: S.textMid }}>{u.name}</div>
               </div>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 500, color: S.textMid }}>{m.name}</div>
-                <div style={{ fontSize: 10, color: S.textSoft }}>{m.role}</div>
-              </div>
-              {m.role === 'Mentor' && <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 100, background: S.amberLight, color: S.amber }}>Mentor</span>}
-            </div>
-          ))}
+            ))
+          )}
           <div style={{ fontSize: 11, color: S.textSoft, marginTop: 8 }}>
             <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: S.green, marginRight: 5, verticalAlign: 'middle' }} />
             {onlineCount} online now
@@ -986,7 +976,6 @@ function LeaderboardPanel({ field: f, completed, userName }) {
         {/* 1st */}
         {podium[0] && (
           <div style={{ background: 'linear-gradient(135deg,#eaf2fd,#fff)', border: `1px solid ${S.blueMid}`, borderRadius: S.radius, padding: '18px 14px 22px', textAlign: 'center', position: 'relative' }}>
-            <div style={{ fontSize: 20, marginBottom: 6 }}>👑</div>
             <div style={{ width: 52, height: 52, borderRadius: '50%', margin: '0 auto 8px', fontSize: 16, fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', background: podium[0].color }}>{podium[0].init}</div>
             <div style={{ fontWeight: 700, fontSize: 13, color: S.text, marginBottom: 2 }}>{podium[0].name}</div>
             <div style={{ fontSize: 10, color: S.textSoft, marginBottom: 6 }}>{podium[0].loc}</div>
@@ -1080,9 +1069,9 @@ function EventCard({ event: e, rsvped, typeStyle, onRsvp }) {
         <div style={{ fontSize: 13, color: S.textMid, lineHeight: 1.55, marginBottom: 10 }}>{e.desc}</div>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ padding: '3px 10px', borderRadius: 100, fontSize: 10, fontWeight: 700, background: typeStyle.background, color: typeStyle.color }}>{typeStyle.label}</span>
-          <span style={{ fontSize: 11, color: S.textSoft }}>⏰ {e.time}</span>
-          <span style={{ fontSize: 11, color: S.textSoft }}>🧭 {e.host}</span>
-          <span style={{ fontSize: 11, color: S.textSoft }}>👥 {e.attendees} going</span>
+          <span style={{ fontSize: 11, color: S.textSoft }}>{e.time}</span>
+          <span style={{ fontSize: 11, color: S.textSoft }}>{e.host}</span>
+          <span style={{ fontSize: 11, color: S.textSoft }}>{e.attendees} going</span>
         </div>
       </div>
       <button onClick={e2 => { e2.stopPropagation(); onRsvp() }} style={{ padding: '9px 20px', background: rsvped ? S.greenLight : S.blue, color: rsvped ? S.green : '#fff', border: rsvped ? '1px solid #bbf7d0' : 'none', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", whiteSpace: 'nowrap', alignSelf: 'center', flexShrink: 0 }}>
@@ -1093,9 +1082,12 @@ function EventCard({ event: e, rsvped, typeStyle, onRsvp }) {
 }
 
 // ─── Field Hub ─────────────────────────────────────────────────────
-function FieldHub({ field, activePanel, onPanelChange, onBack, completed, markComplete, toggleRsvp, isRsvped, onOpenLesson, showToast, userName, user, navigate }) {
-  const [onlineCount, setOnlineCount] = useState(field.onlineMembers?.length || 0)
+function FieldHub({ field, activePanel, onPanelChange, onBack, completed, markComplete, toggleRsvp, isRsvped, onOpenLesson, showToast, userName, user, navigate, memberCounts = {} }) {
+  const [onlineUsers, setOnlineUsers] = useState([])
   const [chatUnread, setChatUnread] = useState(0)
+  const [activeCount, setActiveCount] = useState(null)
+
+  const onlineCount = onlineUsers.length
 
   // Clear unread badge when switching to chat
   useEffect(() => {
@@ -1105,19 +1097,50 @@ function FieldHub({ field, activePanel, onPanelChange, onBack, completed, markCo
     }
   }, [activePanel, field.id])
 
-  // Supabase presence — track who is online in this field
+  // Supabase presence — track real online users in this field
   useEffect(() => {
     if (!field?.id) return
-    const ch = supabase.channel('online-' + field.id)
+    const name = user?.user_metadata?.name || user?.name || 'Anonymous'
+    const ch = supabase.channel('online-' + field.id, {
+      config: { presence: { key: user?.id || 'guest' } }
+    })
     ch.on('presence', { event: 'sync' }, () => {
-      setOnlineCount(Object.keys(ch.presenceState()).length)
+      const state = ch.presenceState()
+      const users = Object.values(state).flat().map(u => ({
+        id: u.user_id,
+        name: u.user_name,
+        init: u.user_init,
+      }))
+      setOnlineUsers(users)
     })
     .subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
-        await ch.track({ user_id: user?.id || 'guest', online_at: new Date().toISOString() })
+        await ch.track({
+          user_id: user?.id || 'guest',
+          user_name: name,
+          user_init: name.substring(0, 2).toUpperCase(),
+          online_at: new Date().toISOString(),
+        })
       }
     })
     return () => supabase.removeChannel(ch)
+  }, [field?.id, user?.id])
+
+  // Active members this week from field_messages
+  useEffect(() => {
+    if (!field?.id) return
+    const weekAgo = new Date()
+    weekAgo.setDate(weekAgo.getDate() - 7)
+    supabase
+      .from('field_messages')
+      .select('user_id')
+      .eq('field_id', field.id)
+      .gte('created_at', weekAgo.toISOString())
+      .then(({ data }) => {
+        if (!data) return
+        const unique = new Set(data.map(m => m.user_id).filter(Boolean))
+        setActiveCount(unique.size)
+      })
   }, [field?.id])
 
   function handleNewChatMessage() {
@@ -1128,7 +1151,7 @@ function FieldHub({ field, activePanel, onPanelChange, onBack, completed, markCo
 
   return (
     <div className="hub-page" style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
-      <HubSidebar field={field} activePanel={activePanel} onPanelChange={onPanelChange} onBack={onBack} onlineCount={onlineCount} chatBadge={chatUnread} />
+      <HubSidebar field={field} activePanel={activePanel} onPanelChange={onPanelChange} onBack={onBack} onlineCount={onlineCount} onlineUsers={onlineUsers} activeCount={activeCount} chatBadge={chatUnread} memberCount={memberCounts[field.id]} />
       <div className="hub-main" style={{ flex: 1, overflowY: activePanel === 'chat' ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* Back bar — always visible above panels */}
         <div style={{ padding: '10px 20px', borderBottom: `1px solid ${S.border}`, background: '#fff', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
@@ -1155,12 +1178,12 @@ function FieldHub({ field, activePanel, onPanelChange, onBack, completed, markCo
             ← All Fields
           </button>
           <span style={{ fontSize: 12, color: S.textSoft }}>/</span>
-          <span style={{ fontSize: 13, fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, color: S.text }}>{field.emoji} {field.name}</span>
+          <span style={{ fontSize: 13, fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, color: S.text }}>{field.name}</span>
         </div>
         <MobileHubTabs activePanel={activePanel} onPanelChange={onPanelChange} />
         <div className="hub-panel">
-          {activePanel === 'overview' && <OverviewPanel field={field} completed={completed} onSwitchPanel={onPanelChange} />}
-          {activePanel === 'chat' && <ChatPanel field={field} user={user} userName={userName} onSwitchPanel={onPanelChange} onNewMessage={handleNewChatMessage} onlineCount={onlineCount} />}
+          {activePanel === 'overview' && <OverviewPanel field={field} completed={completed} onSwitchPanel={onPanelChange} memberCount={memberCounts[field.id]} />}
+          {activePanel === 'chat' && <ChatPanel field={field} user={user} userName={userName} onSwitchPanel={onPanelChange} onNewMessage={handleNewChatMessage} onlineCount={onlineCount} onlineUsers={onlineUsers} memberCount={memberCounts[field.id]} />}
           {activePanel === 'mentors' && <MentorsPanel field={field} onSwitchPanel={onPanelChange} showToast={showToast} />}
           {activePanel === 'roadmap' && <RoadmapPanel field={field} completed={completed} onOpenLesson={onOpenLesson} />}
           {activePanel === 'leaderboard' && <LeaderboardPanel field={field} completed={completed} userName={userName} />}
@@ -1172,26 +1195,91 @@ function FieldHub({ field, activePanel, onPanelChange, onBack, completed, markCo
 }
 
 // ─── Main Learn Page ───────────────────────────────────────────────
+async function getMemberCount(fieldId) {
+  const { count } = await supabase
+    .from('profiles')
+    .select('*', { count: 'exact', head: true })
+    .contains('joined_fields', [fieldId])
+  return count || 0
+}
+
 export default function Learn({ user }) {
   const [currentField, setCurrentField] = useState(null)
   const [activePanel, setActivePanel] = useState('overview')
   const [lessonModal, setLessonModal] = useState(null)
   const [toast, setToast] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [memberCounts, setMemberCounts] = useState({})
   const { joined, completed, toggleJoin, markComplete, getProgress, toggleRsvp, isRsvped } = useLearnState()
   const navigate = useNavigate()
 
   const userName = user?.name || localStorage.getItem('hh_name') || 'student'
+
+  // Load real member counts from profiles.joined_fields
+  useEffect(() => {
+    async function loadCounts() {
+      const counts = {}
+      for (const field of FIELDS) {
+        counts[field.id] = await getMemberCount(field.id)
+      }
+      setMemberCounts(counts)
+    }
+    loadCounts()
+  }, [])
+
+  // Migrate localStorage joined fields → Supabase on login
+  useEffect(() => {
+    if (!user?.id) return
+    const localJoined = JSON.parse(localStorage.getItem('hh_joined') || '[]')
+    if (localJoined.length === 0) return
+    supabase
+      .from('profiles')
+      .select('joined_fields')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => {
+        const merged = [...new Set([...(data?.joined_fields || []), ...localJoined])]
+        supabase.from('profiles').update({ joined_fields: merged }).eq('id', user.id)
+      })
+  }, [user?.id])
 
   function showToast(msg) {
     setToast(msg)
     setTimeout(() => setToast(null), 2500)
   }
 
+  async function handleToggleJoin(fieldId) {
+    const isJoined = joined.includes(fieldId)
+    toggleJoin(fieldId) // localStorage + local state
+    showToast(isJoined ? 'Left community' : 'Joined! Welcome to the community')
+    if (!user?.id) return
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('joined_fields')
+      .eq('id', user.id)
+      .single()
+    const current = profile?.joined_fields || []
+    if (isJoined) {
+      await supabase
+        .from('profiles')
+        .update({ joined_fields: current.filter(f => f !== fieldId) })
+        .eq('id', user.id)
+      setMemberCounts(prev => ({ ...prev, [fieldId]: Math.max((prev[fieldId] || 0) - 1, 0) }))
+    } else {
+      if (!current.includes(fieldId)) {
+        await supabase
+          .from('profiles')
+          .update({ joined_fields: [...current, fieldId] })
+          .eq('id', user.id)
+        setMemberCounts(prev => ({ ...prev, [fieldId]: (prev[fieldId] || 0) + 1 }))
+      }
+    }
+  }
+
   function openField(id) {
     const f = FIELDS.find(f => f.id === id)
     if (!f) return
-    if (!joined.includes(id)) toggleJoin(id)
+    if (!joined.includes(id)) handleToggleJoin(id)
     setCurrentField(f)
     setActivePanel('overview')
     window.scrollTo(0, 0)
@@ -1232,9 +1320,10 @@ export default function Learn({ user }) {
           searchQuery={searchQuery}
           onSearch={setSearchQuery}
           onOpen={openField}
-          onToggleJoin={id => { toggleJoin(id); showToast(joined.includes(id) ? 'Left community' : 'Joined! Welcome to the community 🎉') }}
+          onToggleJoin={id => handleToggleJoin(id)}
           showToast={showToast}
           getProgress={getProgress}
+          memberCounts={memberCounts}
           onGoHome={() => navigate('/home')}
         />
       ) : (
@@ -1253,6 +1342,7 @@ export default function Learn({ user }) {
           userName={userName}
           user={user}
           navigate={navigate}
+          memberCounts={memberCounts}
         />
       )}
     </div>
