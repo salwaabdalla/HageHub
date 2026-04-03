@@ -2686,16 +2686,16 @@ ${codeExplanation.content}`
       {/* Propose a Project Modal */}
       {showProposeModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 py-8"
           style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
           onClick={(e) => e.target === e.currentTarget && setShowProposeModal(false)}
         >
-          <div className="hh-modal-body w-full max-w-lg rounded-[24px] bg-white p-6 shadow-2xl">
-            <div className="mb-5 flex items-center justify-between">
+          <div className="hh-modal-body w-full max-w-lg rounded-[24px] bg-white shadow-2xl my-auto">
+            <div className="sticky top-0 z-10 flex items-center justify-between rounded-t-[24px] bg-white px-6 pt-6 pb-4 border-b border-[#f0f4fa]">
               <h2 className="font-display text-2xl text-slate-950">Propose a Project</h2>
               <button type="button" onClick={() => setShowProposeModal(false)} className="text-slate-400 hover:text-slate-600 text-xl leading-none">×</button>
             </div>
-            <form onSubmit={handleProposeProject} className="space-y-4">
+            <form onSubmit={handleProposeProject} className="space-y-4 px-6 py-5">
               <div>
                 <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Project Title *</label>
                 <input
