@@ -2278,7 +2278,7 @@ ${codeExplanation.content}`
                             ) : (
                               <button type="button" onClick={() => openApplyModal(job)}
                                 className="rounded-full bg-[#4189DD] px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-[#1a5db5]">
-                                Apply {'->'}
+                                Apply 
                               </button>
                             )}
                           </div>

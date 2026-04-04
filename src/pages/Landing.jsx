@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import styles from './Landing.module.css'
+import logoImg from '../assets/logo.jpeg'
 
 const journeySteps = [
   {
@@ -214,7 +215,7 @@ function Landing() {
     <div className={styles.page}>
       <nav className={styles.nav}>
         <a className={styles.navLogo} href="#home" onClick={closeMenu}>
-          Hage Hub<span>.</span>
+          <img src={logoImg} alt="Hage Hub" style={{ height: 72, width: 'auto', display: 'block' }} />
         </a>
         <ul className={styles.navLinks}>
           <li>
@@ -292,8 +293,10 @@ function Landing() {
           </h1>
           <p className={styles.heroSub}>
             25 million Somali speakers deserve infrastructure built for them. Hage Hub is the home
-            for learning, asking, and connecting in Somali and English — from Mogadishu to
-            Minneapolis — so ambition and identity move in the same direction.
+            for learning, asking, and connecting in Somali and English
+            <br/> Learn. Ask. Connect. Build. Grow.
+
+Every step moves you forward  and helps someone else do the same.
           </p>
           <div className={styles.heroActions}>
             <a href="#journey" className={styles.btnPrimary}>
