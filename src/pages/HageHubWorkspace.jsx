@@ -317,6 +317,18 @@ function HageHubWorkspace({ user, onLogout }) {
   const [proposeForm, setProposeForm] = useState({ title: '', description: '', category: '', tags: '', lookingFor: '', impactArea: '', status: 'Open Idea', githubUrl: '' })
   const [proposeLoading, setProposeLoading] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const [editingQuestion, setEditingQuestion] = useState(false)
+  const [editedQTitle, setEditedQTitle] = useState('')
+  const [editedQBody, setEditedQBody] = useState('')
+  const [editingStory, setEditingStory] = useState(false)
+  const [editedStoryTitle, setEditedStoryTitle] = useState('')
+  const [editedStoryExcerpt, setEditedStoryExcerpt] = useState('')
+  const [editedStoryContent, setEditedStoryContent] = useState('')
+  const [editingProject, setEditingProject] = useState(false)
+  const [editedProjectTitle, setEditedProjectTitle] = useState('')
+  const [editedProjectDesc, setEditedProjectDesc] = useState('')
+  const [editedProjectStatus, setEditedProjectStatus] = useState('')
   const [profileTab, setProfileTab] = useState('activity')
   const [showAskModal, setShowAskModal] = useState(false)
   const [showMoreDrawer, setShowMoreDrawer] = useState(false)
@@ -608,6 +620,37 @@ function HageHubWorkspace({ user, onLogout }) {
   function showToast(msg) {
     setToastMsg(msg)
     setTimeout(() => setToastMsg(''), 4000)
+  }
+
+  async function saveQuestionEdit() {
+    try {
+      await supabase.from('questions').update({ title: editedQTitle, body: editedQBody }).eq('id', activeThreadId).eq('user_id', user.id)
+      setQuestions(prev => prev.map(q => q.id === activeThreadId ? { ...q, title: editedQTitle, body: editedQBody } : q))
+      setEditingQuestion(false)
+      showToast('Updated! ✓')
+    } catch { showToast('Failed to update. Try again.') }
+  }
+
+  async function saveStoryEdit() {
+    try {
+      await supabase.from('stories').update({ title: editedStoryTitle, excerpt: editedStoryExcerpt, content: editedStoryContent }).eq('id', selectedStory.id).eq('author_id', user.id)
+      const updated = { ...selectedStory, title: editedStoryTitle, excerpt: editedStoryExcerpt, content: editedStoryContent }
+      setStories(prev => prev.map(s => s.id === selectedStory.id ? updated : s))
+      setSelectedStory(updated)
+      setEditingStory(false)
+      showToast('Updated! ✓')
+    } catch { showToast('Failed to update. Try again.') }
+  }
+
+  async function saveProjectEdit() {
+    try {
+      await supabase.from('projects').update({ title: editedProjectTitle, description: editedProjectDesc, status: editedProjectStatus }).eq('id', activeProject.id).eq('creator_id', user.id)
+      const updated = { ...activeProject, title: editedProjectTitle, description: editedProjectDesc, status: editedProjectStatus }
+      setProjects(prev => prev.map(p => p.id === activeProject.id ? updated : p))
+      setActiveProject(updated)
+      setEditingProject(false)
+      showToast('Updated! ✓')
+    } catch { showToast('Failed to update. Try again.') }
   }
 
   function openApplyModal(job) {
@@ -1102,31 +1145,44 @@ ${codeExplanation.content}`
             <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#dce6f5] bg-[#f4f7fb] text-lg md:hidden">
               {currentNavItem.icon}
             </div>
-            <NavLink to="/profile" className="flex items-center gap-3 rounded-full bg-white px-3 py-2">
-              <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full">
-                <div style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: '50%',
-                  background: getAvatarColor(user?.metadata?.name || user?.name),
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontFamily: 'DM Sans, sans-serif',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: '#fff',
-                  flexShrink: 0,
-                  cursor: 'pointer',
-                }}>
+            <div style={{ position: 'relative' }}>
+              <NavLink to="/profile" className="hidden md:flex items-center gap-3 rounded-full bg-white px-3 py-2">
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: getAvatarColor(user?.metadata?.name || user?.name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 600, color: '#fff', flexShrink: 0 }}>
                   {getInitials(user?.metadata?.name || user?.name)}
                 </div>
-              </div>
-              <div className="hidden md:block">
-                <p className="text-sm font-semibold text-slate-900">{user?.name}</p>
-                <p className="text-xs text-slate-500">{user?.role || 'student'}</p>
-              </div>
-            </NavLink>
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">{user?.name}</p>
+                  <p className="text-xs text-slate-500">{user?.role || 'student'}</p>
+                </div>
+              </NavLink>
+              <button
+                type="button"
+                onClick={() => setShowUserMenu(v => !v)}
+                className="flex md:hidden items-center justify-center rounded-full bg-white"
+                style={{ width: 40, height: 40, border: '1px solid #dce6f5' }}
+              >
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: getAvatarColor(user?.metadata?.name || user?.name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, color: '#fff' }}>
+                  {getInitials(user?.metadata?.name || user?.name)}
+                </div>
+              </button>
+              {showUserMenu && (
+                <>
+                  <div onClick={() => setShowUserMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 190 }} />
+                  <div style={{ position: 'absolute', top: 48, right: 0, background: 'white', border: '1px solid #dce6f5', borderRadius: 14, padding: '8px 0', minWidth: 180, zIndex: 200, boxShadow: '0 8px 24px rgba(12,18,32,0.12)' }}>
+                    <div style={{ padding: '10px 16px', borderBottom: '1px solid #dce6f5', marginBottom: 4 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#0c1220' }}>{user?.user_metadata?.name || user?.name}</div>
+                      <div style={{ fontSize: 11, color: '#8a9bbf' }}>{user?.user_metadata?.role || user?.role || 'student'}</div>
+                    </div>
+                    <button onClick={() => { setCurrentPage('settings'); setShowUserMenu(false) }} style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', textAlign: 'left', fontSize: 13, color: '#3d4f6e', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+                      Settings
+                    </button>
+                    <button onClick={() => { handleLogout(); setShowUserMenu(false) }} style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', textAlign: 'left', fontSize: 13, color: '#e11d48', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}>
+                      Logout
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
             <NavLink to="/settings" className="hidden rounded-full border border-[#dce6f5] bg-white px-4 py-2 text-sm font-medium text-slate-700 md:inline-flex">
               Settings
             </NavLink>
@@ -1278,7 +1334,7 @@ ${codeExplanation.content}`
           activeThread ? (
             /* ── Question Detail / Thread View ── */
             <div className="mx-auto max-w-4xl">
-              <button type="button" onClick={() => setActiveThreadId(null)} className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-slate-400 transition hover:text-[#4189DD]">
+              <button type="button" onClick={() => { setActiveThreadId(null); setEditingQuestion(false) }} className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-slate-400 transition hover:text-[#4189DD]">
                 ← Back to questions
               </button>
 
@@ -1313,20 +1369,7 @@ ${codeExplanation.content}`
                 {/* Meta row */}
                 <div className="mt-5 flex flex-wrap items-center gap-4 border-b border-[#dce6f5] pb-5">
                   <div className="flex items-center gap-2.5">
-                    <div style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: '50%',
-                      background: getAvatarColor(activeThread.poster.name),
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontFamily: 'DM Sans, sans-serif',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: '#fff',
-                      flexShrink: 0,
-                    }}>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: getAvatarColor(activeThread.poster.name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 600, color: '#fff', flexShrink: 0 }}>
                       {getInitials(activeThread.poster.name)}
                     </div>
                     <div>
@@ -1336,14 +1379,39 @@ ${codeExplanation.content}`
                   </div>
                   <span className="text-xs text-slate-400">{activeThread.time}</span>
                   <div className="ml-auto flex items-center gap-4">
-                    <span className="text-sm text-slate-400">
-                      {threadAnswers.length} {threadAnswers.length === 1 ? 'answer' : 'answers'}
-                    </span>
+                    <span className="text-sm text-slate-400">{threadAnswers.length} {threadAnswers.length === 1 ? 'answer' : 'answers'}</span>
+                    {user?.id === activeThread?.user_id && !editingQuestion && (
+                      <button type="button" onClick={() => { setEditedQTitle(activeThread.title); setEditedQBody(activeThread.body || ''); setEditingQuestion(true) }} className="rounded-full border border-[#dce6f5] px-3 py-1 text-xs font-medium text-slate-500 hover:border-[#4189DD] hover:text-[#4189DD]">
+                        Edit
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                {activeThread.body && activeThread.lang !== 'both' && (
-                  <p className="mt-5 text-[15px] leading-8 text-slate-600">{activeThread.body}</p>
+                {editingQuestion ? (
+                  <div className="mt-5 space-y-3">
+                    <input
+                      value={editedQTitle}
+                      onChange={e => setEditedQTitle(e.target.value)}
+                      className="w-full rounded-[12px] border border-[#dce6f5] px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-[#4189DD]"
+                      placeholder="Question title"
+                    />
+                    <textarea
+                      value={editedQBody}
+                      onChange={e => setEditedQBody(e.target.value)}
+                      rows={4}
+                      className="w-full rounded-[12px] border border-[#dce6f5] px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-[#4189DD] resize-none"
+                      placeholder="Question body (optional)"
+                    />
+                    <div className="flex gap-2">
+                      <button type="button" onClick={saveQuestionEdit} className="rounded-full bg-[#4189DD] px-5 py-2 text-sm font-semibold text-white hover:bg-[#1a5db5]">Save Changes</button>
+                      <button type="button" onClick={() => setEditingQuestion(false)} className="rounded-full border border-[#dce6f5] px-5 py-2 text-sm font-medium text-slate-600 hover:bg-[#f4f7fb]">Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  activeThread.body && activeThread.lang !== 'both' && (
+                    <p className="mt-5 text-[15px] leading-8 text-slate-600">{activeThread.body}</p>
+                  )
                 )}
                 {/* Attached images */}
                 {(() => {
@@ -1720,17 +1788,17 @@ ${codeExplanation.content}`
               </div>
             ) : (
               <div className="px-4 py-4 sm:px-6 sm:py-6">
-                <div className="grid gap-6 md:grid-cols-[1fr_420px]">
+                <div className="grid gap-6 grid-cols-1 md:grid-cols-[1fr_420px]">
                   <div className="space-y-4">
                     <textarea
                       value={codeInput}
                       onChange={(event) => setCodeInput(event.target.value)}
                       placeholder="Paste any code here - Python, JavaScript, HTML, anything..."
+                      className="w-full"
                       style={{
-                        width: '100%',
-                        minHeight: 150,
+                        minHeight: 'clamp(140px, 30vw, 260px)',
                         fontFamily: 'monospace',
-                        fontSize: 13,
+                        fontSize: 'clamp(11px, 2vw, 13px)',
                         padding: 16,
                         border: '1.5px solid #dce6f5',
                         borderRadius: 12,
@@ -2357,17 +2425,36 @@ ${codeExplanation.content}`
                 <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 20, maxWidth: 680, width: '100%', padding: '40px 48px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                     <span style={{ padding: '4px 12px', background: '#eaf2fd', color: '#4189DD', borderRadius: 100, fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>{selectedStory.category}</span>
-                    <button onClick={() => setSelectedStory(null)} style={{ background: 'none', border: '1px solid #dce6f5', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 13, color: '#8a9bbf' }}>✕ Close</button>
-                  </div>
-                  <h1 style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 36, fontWeight: 700, color: '#0c1220', marginBottom: 16, lineHeight: 1.2 }}>{selectedStory.title}</h1>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 32, paddingBottom: 24, borderBottom: '1px solid #dce6f5' }}>
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: selectedStory._color || '#4189DD', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, color: '#fff' }}>{selectedStory.author_init}</div>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#0c1220' }}>{selectedStory.author_name}</div>
-                      <div style={{ fontSize: 12, color: '#8a9bbf' }}>{new Date(selectedStory.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      {user?.id === selectedStory?.author_id && !editingStory && (
+                        <button onClick={() => { setEditedStoryTitle(selectedStory.title); setEditedStoryExcerpt(selectedStory.excerpt || ''); setEditedStoryContent(selectedStory.content || ''); setEditingStory(true) }} style={{ background: 'none', border: '1px solid #dce6f5', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 13, color: '#4189DD' }}>Edit Story</button>
+                      )}
+                      <button onClick={() => { setSelectedStory(null); setEditingStory(false) }} style={{ background: 'none', border: '1px solid #dce6f5', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 13, color: '#8a9bbf' }}>✕ Close</button>
                     </div>
                   </div>
-                  <div style={{ fontSize: 16, lineHeight: 1.8, color: '#3d4f6e', whiteSpace: 'pre-wrap' }}>{selectedStory.content}</div>
+                  {editingStory ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <input value={editedStoryTitle} onChange={e => setEditedStoryTitle(e.target.value)} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #dce6f5', borderRadius: 10, fontSize: 15, fontFamily: 'DM Sans, sans-serif', outline: 'none', boxSizing: 'border-box' }} placeholder="Title" />
+                      <textarea value={editedStoryExcerpt} onChange={e => setEditedStoryExcerpt(e.target.value)} rows={2} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #dce6f5', borderRadius: 10, fontSize: 13, fontFamily: 'DM Sans, sans-serif', outline: 'none', resize: 'none', boxSizing: 'border-box' }} placeholder="Short excerpt" />
+                      <textarea value={editedStoryContent} onChange={e => setEditedStoryContent(e.target.value)} rows={8} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #dce6f5', borderRadius: 10, fontSize: 14, fontFamily: 'DM Sans, sans-serif', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }} placeholder="Story content" />
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={saveStoryEdit} style={{ padding: '10px 22px', background: '#4189DD', color: '#fff', border: 'none', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>Save Changes</button>
+                        <button onClick={() => setEditingStory(false)} style={{ padding: '10px 22px', background: 'none', color: '#3d4f6e', border: '1px solid #dce6f5', borderRadius: 100, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <h1 style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 36, fontWeight: 700, color: '#0c1220', marginBottom: 16, lineHeight: 1.2 }}>{selectedStory.title}</h1>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 32, paddingBottom: 24, borderBottom: '1px solid #dce6f5' }}>
+                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: selectedStory._color || '#4189DD', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, color: '#fff' }}>{selectedStory.author_init}</div>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: '#0c1220' }}>{selectedStory.author_name}</div>
+                          <div style={{ fontSize: 12, color: '#8a9bbf' }}>{new Date(selectedStory.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 16, lineHeight: 1.8, color: '#3d4f6e', whiteSpace: 'pre-wrap' }}>{selectedStory.content}</div>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -2816,12 +2903,33 @@ ${codeExplanation.content}`
                   {activeProject.created_at ? ` · ${new Date(activeProject.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
                 </p>
               </div>
-              <button type="button" onClick={() => setActiveProject(null)} className="shrink-0 rounded-full p-2 text-slate-400 hover:bg-[#f4f7fb] hover:text-slate-600 text-xl leading-none">×</button>
+              <div className="flex items-center gap-2 shrink-0">
+                {user?.id === activeProject.creator_id && !editingProject && (
+                  <button type="button" onClick={() => { setEditedProjectTitle(activeProject.title); setEditedProjectDesc(activeProject.description || ''); setEditedProjectStatus(activeProject.status || 'idea'); setEditingProject(true) }} className="rounded-full border border-[#dce6f5] px-3 py-1 text-xs font-medium text-[#4189DD] hover:bg-[#eaf2fd]">Edit</button>
+                )}
+                <button type="button" onClick={() => { setActiveProject(null); setEditingProject(false) }} className="rounded-full p-2 text-slate-400 hover:bg-[#f4f7fb] hover:text-slate-600 text-xl leading-none">×</button>
+              </div>
             </div>
 
             <div className="flex-1 space-y-5 overflow-y-auto p-5">
               {/* Description */}
-              <p className="text-sm leading-7 text-slate-600">{activeProject.description}</p>
+              {editingProject ? (
+                <div className="space-y-3">
+                  <input value={editedProjectTitle} onChange={e => setEditedProjectTitle(e.target.value)} className="w-full rounded-[12px] border border-[#dce6f5] px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-[#4189DD]" placeholder="Project title" />
+                  <textarea value={editedProjectDesc} onChange={e => setEditedProjectDesc(e.target.value)} rows={4} className="w-full rounded-[12px] border border-[#dce6f5] px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-[#4189DD] resize-none" placeholder="Description" />
+                  <select value={editedProjectStatus} onChange={e => setEditedProjectStatus(e.target.value)} className="w-full rounded-[12px] border border-[#dce6f5] px-4 py-2.5 text-sm text-slate-800 outline-none focus:border-[#4189DD] bg-white">
+                    <option value="idea">Open Idea</option>
+                    <option value="building">Building Now</option>
+                    <option value="complete">Complete</option>
+                  </select>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={saveProjectEdit} className="rounded-full bg-[#4189DD] px-5 py-2 text-sm font-semibold text-white hover:bg-[#1a5db5]">Save Changes</button>
+                    <button type="button" onClick={() => setEditingProject(false)} className="rounded-full border border-[#dce6f5] px-5 py-2 text-sm font-medium text-slate-600 hover:bg-[#f4f7fb]">Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm leading-7 text-slate-600">{activeProject.description}</p>
+              )}
 
               {/* GitHub */}
               {activeProject.github_url && (

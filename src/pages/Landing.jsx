@@ -622,49 +622,7 @@ Every step moves you forward  and helps someone else do the same.
         </section>
       </Reveal>
 
-      <Reveal>
-        <section className={styles.section} id="stories">
-          <div className={styles.sectionHead}>
-            <div className={styles.sectionLabel}>Stories</div>
-            <h2 className={styles.sectionTitle}>
-              You don&apos;t have to choose
-              <br />
-              between being Somali and
-              <br />
-              being a technologist.
-            </h2>
-          </div>
-          <div className={styles.storiesGrid}>
-            {stories.map((s, i) => (
-              <Reveal
-                key={s.title}
-                delayClass={
-                  i === 1 ? styles.revealDelay1 : i === 2 ? styles.revealDelay2 : ''
-                }
-              >
-                <div className={styles.storyCard}>
-                  <div className={styles.storyImg} style={s.imgBg}>
-                    <div className={styles.storyImgBg}>{s.letter}</div>
-                    <span className={styles.storyCat}>{s.cat}</span>
-                  </div>
-                  <div className={styles.storyBody}>
-                    <div className={styles.storyTitle}>{s.title}</div>
-                    <div className={styles.storyExcerpt}>{s.excerpt}</div>
-                    <div className={styles.storyAuthor}>
-                      <div className={styles.storyAv} style={s.avStyle}>
-                        {s.av}
-                      </div>
-                      <div className={styles.storyName}>{s.author}</div>
-                      <div className={styles.storyDate}>{s.date}</div>
-                    </div>
-                  </div>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </section>
-      </Reveal>
-
+    
       <Reveal>
         <section className={styles.ctaSection}>
           <div className={styles.sectionLabel}>Join the Movement</div>
